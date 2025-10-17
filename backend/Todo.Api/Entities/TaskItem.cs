@@ -1,6 +1,6 @@
 namespace Todo.Api.Entities;
 
-public class TaskItem
+public class TaskItem : BaseEntity
 {
     public int Id { get; set; }
     public string Title { get; set; } = string.Empty;
@@ -10,10 +10,4 @@ public class TaskItem
     // FK to owning list
     public int? TaskListId { get; set; }
     public TaskList? TaskList { get; set; }
-
-    // Soft-delete flag
-    public bool IsDeleted { get; set; } = false;
-
-    // History
-    public DateTime? DeletedAt { get; set; } = null;
 }
