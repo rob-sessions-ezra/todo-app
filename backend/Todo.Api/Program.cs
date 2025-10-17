@@ -4,7 +4,7 @@ using Todo.Api.Data;
 var builder = WebApplication.CreateBuilder(args);
 
 // Register InMemory EF Core for TodoContext
-builder.Services.AddDbContext<TodoContext>(options => options.UseInMemoryDatabase("TodoInMemoryDb"));
+builder.Services.AddDbContext<TaskContext>(options => options.UseInMemoryDatabase("TodoInMemoryDb"));
 
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
