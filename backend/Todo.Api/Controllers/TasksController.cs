@@ -135,9 +135,6 @@ public class TasksController(
             return NotFound();
         }
 
-        // Soft-delete
-        item.IsDeleted = true;
-        item.DeletedAt = DateTime.UtcNow;
         await _context.SaveChangesAsync();
 
         return NoContent();

@@ -78,17 +78,9 @@ public class ListsController(
             return NotFound();
         }
 
-        // Soft-delete list and its tasks
-        var now = DateTime.UtcNow;
-        list.IsDeleted = true;
-        list.DeletedAt = now;
-        foreach (var t in list.TaskItems)
-        {
-            t.IsDeleted = true;
-            t.DeletedAt = now;
-        }
-
+        _context.TaskLists.Remove(list);
         await _context.SaveChangesAsync();
+
         return NoContent();
     }
 }

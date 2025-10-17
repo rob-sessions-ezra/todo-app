@@ -21,4 +21,31 @@ public class TaskContext(DbContextOptions<TaskContext> options) : DbContext(opti
             .IsRequired()
             .OnDelete(DeleteBehavior.Cascade);
     }
+
+    public override async Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
+    {
+        var now = DateTime.UtcNow;
+
+        foreach (var entry in ChangeTracker.Entries<BaseEntity>())
+        {
+            if (entry.State == EntityState.Added)
+            {
+                entry.Entity.CreatedAt = now;
+                entry.Entity.UpdatedAt = now;
+            }
+            else if (entry.State == EntityState.Modified)
+            {
+                entry.Entity.UpdatedAt = now;
+            }
+            else if (entry.State == EntityState.Deleted)
+            {
+                // soft delete instead of hard delete
+                entry.State = EntityState.Modified;
+                entry.Entity.IsDeleted = true;
+                entry.Entity.DeletedAt = now;
+            }
+        }
+
+        return await base.SaveChangesAsync(cancellationToken);
+    }
 }
