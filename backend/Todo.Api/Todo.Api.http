@@ -1,3 +1,50 @@
-@Todo.Api_HostAddress = http://localhost:5237
+@baseUrl = http://localhost:5237
 
-###
+### Lists: get all
+GET {{baseUrl}}/api/lists
+
+### Lists: get one
+GET {{baseUrl}}/api/lists/1
+
+### Lists: create
+POST {{baseUrl}}/api/lists
+Content-Type: application/json
+{
+  "name": "Groceries"
+}
+
+### Lists: delete
+DELETE {{baseUrl}}/api/lists/1
+
+### Tasks: get all
+GET {{baseUrl}}/api/tasks
+
+### Tasks: get by list
+GET {{baseUrl}}/api/tasks?listId=1
+
+### Tasks: get one
+GET {{baseUrl}}/api/tasks/1
+
+### Tasks: create
+POST {{baseUrl}}/api/tasks
+Content-Type: application/json
+{
+  "title": "Buy milk",
+  "isComplete": false,
+  "dueDate": "2025-11-01T00:00:00",
+  "taskListId": 1
+}
+
+### Tasks: update
+PUT {{baseUrl}}/api/tasks/1
+Content-Type: application/json
+{
+  "id": 1,
+  "title": "Buy milk and eggs",
+  "isComplete": false,
+  "dueDate": "2025-11-02T00:00:00",
+  "taskListId": 1
+}
+
+### Tasks: delete
+DELETE {{baseUrl}}/api/tasks/1
