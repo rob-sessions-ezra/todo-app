@@ -1,4 +1,4 @@
-namespace Todo.Api.Models;
+namespace Todo.Api.Entities;
 
 public class TaskItem
 {

@@ -3,7 +3,9 @@ namespace Todo.Api.Controllers;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Todo.Api.Data;
-using Todo.Api.Models;
+using Todo.Api.Entities;
+using Todo.Api.Dtos;
+using Todo.Api.Mappings;
 
 [ApiController]
 [Route("api/tasks")]
@@ -16,59 +18,88 @@ public class TasksController(
 
     // GET: api/tasks?listId=5
     [HttpGet]
-    public async Task<ActionResult<IEnumerable<TaskItem>>> GetTasks([FromQuery] int? listId)
+    public async Task<ActionResult<IEnumerable<TaskItemDto>>> GetTasks([FromQuery] int? listId)
     {
         if (listId.HasValue)
         {
-            return await _context.TaskItems
+            var items = await _context.TaskItems
+                .AsNoTracking()
                 .Where(t => t.TaskListId == listId.Value)
                 .ToListAsync();
+
+            return Ok(items.Select(t => t.ToDto()));
         }
 
-        return await _context.TaskItems.ToListAsync();
+        var all = await _context.TaskItems.ToListAsync();
+        return Ok(all.Select(t => t.ToDto()));
     }
 
     // GET: api/tasks/5
     [HttpGet("{id}")]
-    public async Task<ActionResult<TaskItem>> GetTask(int id)
+    public async Task<ActionResult<TaskItemDto>> GetTask(int id)
     {
-        var item = await _context.TaskItems.FindAsync(id);
+        var item = await _context.TaskItems
+            .AsNoTracking()
+            .FirstOrDefaultAsync(t => t.Id == id);
+
         if (item == null)
         {
             return NotFound();
         }
 
-        return item;
+        return item.ToDto();
     }
 
     // POST: api/tasks
     [HttpPost]
-    public async Task<ActionResult<TaskItem>> CreateTask(TaskItem item)
+    public async Task<ActionResult<TaskItemDto>> CreateTask(CreateTaskDto dto)
     {
-        if (item.TaskListId.HasValue)
+        if (dto.TaskListId.HasValue)
         {
-            var listExists = await _context.TaskLists.AnyAsync(l => l.Id == item.TaskListId.Value);
+            var listExists = await _context.TaskLists.AnyAsync(l => l.Id == dto.TaskListId.Value);
             if (!listExists)
             {
-                return BadRequest($"TaskList with id {item.TaskListId.Value} does not exist.");
+                return BadRequest($"TaskList with id {dto.TaskListId.Value} does not exist.");
             }
         }
 
-        _context.TaskItems.Add(item);
+        var entity = new TaskItem
+        {
+            Title = dto.Title,
+            IsComplete = dto.IsComplete,
+            DueDate = dto.DueDate,
+            TaskListId = dto.TaskListId
+        };
+
+        _context.TaskItems.Add(entity);
         await _context.SaveChangesAsync();
-        return CreatedAtAction(nameof(GetTask), new { id = item.Id }, item);
+
+        return CreatedAtAction(nameof(GetTask), new { id = entity.Id }, entity.ToDto());
     }
 
     // PUT: api/tasks/5
     [HttpPut("{id}")]
-    public async Task<IActionResult> UpdateTask(int id, TaskItem item)
+    public async Task<IActionResult> UpdateTask(int id, UpdateTaskDto dto)
     {
-        if (id != item.Id)
+        var existing = await _context.TaskItems.FindAsync(id);
+        if (existing == null)
         {
-            return BadRequest();
+            return NotFound();
         }
 
-        _context.Entry(item).State = EntityState.Modified;
+        if (dto.TaskListId.HasValue)
+        {
+            var listExists = await _context.TaskLists.AnyAsync(l => l.Id == dto.TaskListId.Value);
+            if (!listExists)
+            {
+                return BadRequest($"TaskList with id {dto.TaskListId.Value} does not exist.");
+            }
+        }
+
+        existing.Title = dto.Title;
+        existing.IsComplete = dto.IsComplete;
+        existing.DueDate = dto.DueDate;
+        existing.TaskListId = dto.TaskListId;
 
         try
         {
