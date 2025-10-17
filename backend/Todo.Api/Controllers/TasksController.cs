@@ -1,5 +1,7 @@
 namespace Todo.Api.Controllers;
 
+using System;
+using System.Linq;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Todo.Api.Data;
@@ -30,7 +32,10 @@ public class TasksController(
             return Ok(items.Select(t => t.ToDto()));
         }
 
-        var all = await _context.TaskItems.ToListAsync();
+        var all = await _context.TaskItems
+            .AsNoTracking()
+            .ToListAsync();
+            
         return Ok(all.Select(t => t.ToDto()));
     }
 
@@ -81,7 +86,9 @@ public class TasksController(
     [HttpPut("{id}")]
     public async Task<IActionResult> UpdateTask(int id, UpdateTaskDto dto)
     {
-        var existing = await _context.TaskItems.FindAsync(id);
+        var existing = await _context.TaskItems
+            .FirstOrDefaultAsync(t => t.Id == id);
+
         if (existing == null)
         {
             return NotFound();
@@ -128,7 +135,9 @@ public class TasksController(
             return NotFound();
         }
 
-        _context.TaskItems.Remove(item);
+        // Soft-delete
+        item.IsDeleted = true;
+        item.DeletedAt = DateTime.UtcNow;
         await _context.SaveChangesAsync();
 
         return NoContent();

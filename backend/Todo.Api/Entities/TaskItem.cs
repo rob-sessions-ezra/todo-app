@@ -7,6 +7,13 @@ public class TaskItem
     public bool IsComplete { get; set; }
     public DateTime? DueDate { get; set; }
 
+    // FK to owning list
     public int? TaskListId { get; set; }
     public TaskList? TaskList { get; set; }
+
+    // Soft-delete flag
+    public bool IsDeleted { get; set; } = false;
+
+    // History
+    public DateTime? DeletedAt { get; set; } = null;
 }

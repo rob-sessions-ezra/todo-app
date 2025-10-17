@@ -1,5 +1,7 @@
 namespace Todo.Api.Controllers;
 
+using System;
+using System.Linq;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Todo.Api.Data;
@@ -25,7 +27,9 @@ public class ListsController(
             .Include(l => l.TaskItems)
             .ToListAsync();
 
-        return Ok(lists.Select(l => l.ToDto()));
+        var result = lists.Select(l => l.ToDto()).ToList();
+
+        return Ok(result);
     }
 
     // GET: api/lists/5
@@ -65,13 +69,25 @@ public class ListsController(
     [HttpDelete("{id}")]
     public async Task<IActionResult> DeleteList(int id)
     {
-        var list = await _context.TaskLists.FindAsync(id);
+        var list = await _context.TaskLists
+            .Include(l => l.TaskItems)
+            .FirstOrDefaultAsync(l => l.Id == id);
+
         if (list == null)
         {
             return NotFound();
         }
 
-        _context.TaskLists.Remove(list);
+        // Soft-delete list and its tasks
+        var now = DateTime.UtcNow;
+        list.IsDeleted = true;
+        list.DeletedAt = now;
+        foreach (var t in list.TaskItems)
+        {
+            t.IsDeleted = true;
+            t.DeletedAt = now;
+        }
+
         await _context.SaveChangesAsync();
         return NoContent();
     }
