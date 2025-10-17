@@ -3,7 +3,9 @@ namespace Todo.Api.Controllers;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Todo.Api.Data;
-using Todo.Api.Models;
+using Todo.Api.Dtos;
+using Todo.Api.Entities;
+using Todo.Api.Mappings;
 
 [ApiController]
 [Route("api/lists")]
@@ -16,18 +18,22 @@ public class ListsController(
 
     // GET: api/lists
     [HttpGet]
-    public async Task<ActionResult<IEnumerable<TaskList>>> GetLists()
+    public async Task<ActionResult<IEnumerable<TaskListDto>>> GetLists()
     {
-        return await _context.TaskLists
+        var lists = await _context.TaskLists
+            .AsNoTracking()
             .Include(l => l.TaskItems)
             .ToListAsync();
+
+        return Ok(lists.Select(l => l.ToDto()));
     }
 
     // GET: api/lists/5
     [HttpGet("{id}")]
-    public async Task<ActionResult<TaskList>> GetList(int id)
+    public async Task<ActionResult<TaskListDto>> GetList(int id)
     {
         var list = await _context.TaskLists
+            .AsNoTracking()
             .Include(l => l.TaskItems)
             .FirstOrDefaultAsync(l => l.Id == id);
 
@@ -36,16 +42,23 @@ public class ListsController(
             return NotFound();
         }
 
-        return list;
+        return Ok(list.ToDto());
     }
 
     // POST: api/lists
     [HttpPost]
-    public async Task<ActionResult<TaskList>> CreateList(TaskList list)
+    public async Task<ActionResult<TaskListDto>> CreateList(CreateTaskListDto dto)
     {
-        _context.TaskLists.Add(list);
+        var entity = new TaskList
+        {
+            Name = dto.Name
+        };
+
+        _context.TaskLists.Add(entity);
         await _context.SaveChangesAsync();
-        return CreatedAtAction(nameof(GetList), new { id = list.Id }, list);
+
+        var result = new TaskListDto(entity.Id, entity.Name, []);
+        return CreatedAtAction(nameof(GetList), new { id = entity.Id }, result);
     }
 
     // DELETE: api/lists/5
