@@ -13,4 +13,7 @@ public class TaskItem
 
     // Soft-delete flag
     public bool IsDeleted { get; set; } = false;
+
+    // History
+    public DateTime? DeletedAt { get; set; } = null;
 }

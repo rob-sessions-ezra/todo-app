@@ -1,5 +1,6 @@
 namespace Todo.Api.Controllers;
 
+using System;
 using System.Linq;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -78,10 +79,13 @@ public class ListsController(
         }
 
         // Soft-delete list and its tasks
+        var now = DateTime.UtcNow;
         list.IsDeleted = true;
+        list.DeletedAt = now;
         foreach (var t in list.TaskItems)
         {
             t.IsDeleted = true;
+            t.DeletedAt = now;
         }
 
         await _context.SaveChangesAsync();

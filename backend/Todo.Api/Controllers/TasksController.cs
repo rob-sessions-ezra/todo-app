@@ -1,5 +1,6 @@
 namespace Todo.Api.Controllers;
 
+using System;
 using System.Linq;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -128,7 +129,7 @@ public class TasksController(
     [HttpDelete("{id}")]
     public async Task<IActionResult> DeleteTask(int id)
     {
-        var item = await _context.TaskItems.FirstOrDefaultAsync(t => t.Id == id);
+        var item = await _context.TaskItems.FindAsync(id);
         if (item == null)
         {
             return NotFound();
@@ -136,6 +137,7 @@ public class TasksController(
 
         // Soft-delete
         item.IsDeleted = true;
+        item.DeletedAt = DateTime.UtcNow;
         await _context.SaveChangesAsync();
 
         return NoContent();
