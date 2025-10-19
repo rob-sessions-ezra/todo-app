@@ -16,6 +16,8 @@ public partial class ListsControllerTests
 
         // Assert
         Assert.Equal(HttpStatusCode.NoContent, response.StatusCode);
+
+        // Confirm it's gone
         var getResponse = await _client.GetAsync($"/api/lists/{created.Id}");
         Assert.Equal(HttpStatusCode.NotFound, getResponse.StatusCode);
     }
@@ -25,7 +27,7 @@ public partial class ListsControllerTests
     {
         // Act
         var response = await _client.DeleteAsync("/api/lists/9999");
-
+        
         // Assert
         Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
     }
