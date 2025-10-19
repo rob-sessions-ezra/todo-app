@@ -30,6 +30,7 @@ export function TaskList({
   const addTask = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     const title = newTaskTitle.trim();
+
     if (!title) {
       return;
     }
@@ -49,12 +50,19 @@ export function TaskList({
   // Rename task
   const onRename = async (id: number, title: string) => {
     const existing = tasks.find(t => t.id === id);
+
     if (!existing || existing.title === title) {
       return;
     }
 
     await api.updateTask(id, { ...existing, title });
     setTasks(prev => prev.map(t => (t.id === id ? { ...t, title } : t)));
+  };
+
+  // Delete task
+  const onDeleteTask = async (id: number) => {
+    await api.deleteTask(id);
+    setTasks(prev => prev.filter(t => t.id !== id));
   };
 
   // Rename list
@@ -143,7 +151,13 @@ export function TaskList({
 
         <ul className="space-y-2 mb-6">
           {incompleteTasks.map(t => (
-            <TaskItemRow key={t.id} task={t} onToggle={onToggle} onRename={onRename} />
+            <TaskItemRow
+              key={t.id}
+              task={t}
+              onToggle={onToggle}
+              onRename={onRename}
+              onDelete={onDeleteTask}
+            />
           ))}
         </ul>
 
@@ -171,7 +185,13 @@ export function TaskList({
             {isExpanded && (
               <ul className="space-y-2">
                 {completedTasks.map(t => (
-                  <TaskItemRow key={t.id} task={t} onToggle={onToggle} onRename={onRename} />
+                  <TaskItemRow
+                    key={t.id}
+                    task={t}
+                    onToggle={onToggle}
+                    onRename={onRename}
+                    onDelete={onDeleteTask}
+                  />
                 ))}
               </ul>
             )}
