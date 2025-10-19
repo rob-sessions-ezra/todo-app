@@ -16,6 +16,14 @@ export const api = {
         });
         return res.json();
     },
+    
+    async updateListTitle(id: number, name: string): Promise<void> {
+        await fetch(`${API_BASE}/lists/${id}/title`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ name })
+        });
+    },
 
     async getTasks(listId?: number): Promise<TaskItem[]> {
         const url = `${API_BASE}/tasks${listId ? `?listId=${listId}` : ''}`;

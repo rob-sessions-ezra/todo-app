@@ -8,18 +8,24 @@ export function TaskList({ list }: { list: TaskList }) {
   const [tasks, setTasks] = useState<TaskItem[]>([]);
   const [newTaskTitle, setNewTaskTitle] = useState('');
   const [isExpanded, setIsExpanded] = useState(true);
+  const [isEditingList, setIsEditingList] = useState(false);
+  const [listName, setListName] = useState(list.name);
 
   // Load tasks once per list
   useEffect(() => {
     api.getTasks(list.id).then(setTasks);
   }, [list.id]);
 
+  useEffect(() => {
+    setListName(list.name);
+  }, [list.name]);
+
   // Add new task
   const addTask = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     const title = newTaskTitle.trim();
     if (!title) {
-        return;
+      return;
     }
 
     setNewTaskTitle('');
@@ -38,11 +44,32 @@ export function TaskList({ list }: { list: TaskList }) {
   const onRename = async (id: number, title: string) => {
     const existing = tasks.find(t => t.id === id);
     if (!existing || existing.title === title) {
-        return;
+      return;
     }
 
     await api.updateTask(id, { ...existing, title });
     setTasks(prev => prev.map(t => (t.id === id ? { ...t, title } : t)));
+  };
+
+  // Rename list
+  const startEditList = () => {
+    setIsEditingList(true);
+    setListName(list.name);
+  };
+
+  const cancelEditList = () => {
+    setIsEditingList(false);
+    setListName(list.name);
+  };
+
+  const saveListTitle = async () => {
+    const next = listName.trim();
+    if (!next || next === list.name) {
+      return cancelEditList();
+    }
+
+    await api.updateListTitle(list.id, next);
+    setIsEditingList(false);
   };
 
   const completedTasks = tasks.filter(t => t.isComplete);
@@ -51,7 +78,31 @@ export function TaskList({ list }: { list: TaskList }) {
   return (
     <div className="bg-white rounded-lg shadow-sm border border-gray-200">
       <div className="p-4 border-b border-gray-200">
-        <h2 className="text-lg font-semibold text-gray-900">{list.name}</h2>
+        {isEditingList ? (
+          <input
+            className="text-lg font-semibold text-gray-900 bg-white px-2 py-1 border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-indigo-500"
+            value={listName}
+            onChange={e => setListName(e.target.value)}
+            autoFocus
+            onBlur={saveListTitle}
+            onKeyDown={e => {
+              if (e.key === 'Enter') {
+                return saveListTitle();
+              }
+              if (e.key === 'Escape') {
+                return cancelEditList();
+              }
+            }}
+          />
+        ) : (
+          <h2
+            className="text-lg font-semibold text-gray-900 cursor-text"
+            onClick={startEditList}
+            title="Click to rename"
+          >
+            {listName}
+          </h2>
+        )}
       </div>
 
       <div className="p-4">
@@ -89,7 +140,10 @@ export function TaskList({ list }: { list: TaskList }) {
               >
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
               </svg>
-              <span>{completedTasks.length} Completed {completedTasks.length === 1 ? 'item' : 'items'}</span>
+              <span>
+                {completedTasks.length} Completed{' '}
+                {completedTasks.length === 1 ? 'item' : 'items'}
+              </span>
             </button>
 
             {isExpanded && (
