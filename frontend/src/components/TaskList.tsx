@@ -2,25 +2,24 @@ import { useEffect, useState } from 'react';
 import type { TaskItem, TaskList } from '../types/api';
 import { api } from '../services/api';
 import { Button } from './Button';
+import { TaskItemRow } from './TaskItemRow';
 
 export function TaskList({ list }: { list: TaskList }) {
   const [tasks, setTasks] = useState<TaskItem[]>([]);
   const [newTaskTitle, setNewTaskTitle] = useState('');
   const [isExpanded, setIsExpanded] = useState(true);
-  const [editingTaskId, setEditingTaskId] = useState<number | null>(null);
-  const [editingText, setEditingText] = useState('');
 
   // Load tasks once per list
   useEffect(() => {
     api.getTasks(list.id).then(setTasks);
   }, [list.id]);
 
-  // Add
+  // Add new task
   const addTask = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     const title = newTaskTitle.trim();
     if (!title) {
-      return;
+        return;
     }
 
     setNewTaskTitle('');
@@ -29,84 +28,25 @@ export function TaskList({ list }: { list: TaskList }) {
   };
 
   // Toggle complete
-  const toggleTask = async (task: TaskItem) => {
+  const onToggle = async (task: TaskItem) => {
     const next = !task.isComplete;
     await api.updateTask(task.id, { ...task, isComplete: next });
     setTasks(prev => prev.map(t => (t.id === task.id ? { ...t, isComplete: next } : t)));
   };
 
-  // Edit helpers
-  const startEditing = (t: TaskItem) => {
-    setEditingTaskId(t.id);
-    setEditingText(t.title);
-  };
-
-  const cancelEditing = () => {
-    setEditingTaskId(null);
-    setEditingText('');
-  };
-
-  const saveEdit = async (taskId: number) => {
-    const title = editingText.trim();
-    if (!title) {
-        return cancelEditing();
-    }
-
-    const existing = tasks.find(t => t.id === taskId);
+  // Rename task
+  const onRename = async (id: number, title: string) => {
+    const existing = tasks.find(t => t.id === id);
     if (!existing || existing.title === title) {
-        return cancelEditing();
+        return;
     }
 
-    await api.updateTask(taskId, { ...existing, title });
-    setTasks(prev => prev.map(t => (t.id === taskId ? { ...t, title } : t)));
-    cancelEditing();
+    await api.updateTask(id, { ...existing, title });
+    setTasks(prev => prev.map(t => (t.id === id ? { ...t, title } : t)));
   };
 
   const completedTasks = tasks.filter(t => t.isComplete);
   const incompleteTasks = tasks.filter(t => !t.isComplete);
-
-  const renderTask = (task: TaskItem) => {
-    const isEditing = editingTaskId === task.id;
-    const checkboxId = `task-${task.id}`;
-
-    return (
-      <li key={task.id} className="p-2 hover:bg-gray-50 rounded-md">
-        <div className="flex items-center gap-3">
-          <input
-            id={checkboxId}
-            name={checkboxId}
-            type="checkbox"
-            checked={task.isComplete}
-            onChange={() => toggleTask(task)}
-            aria-label={`Mark "${task.title}" as ${task.isComplete ? 'incomplete' : 'complete'}`}
-            className="h-4 w-4 text-indigo-600 rounded focus:ring-indigo-500 border-gray-300"
-          />
-          {isEditing ? (
-            <input
-              type="text"
-              value={editingText}
-              onChange={e => setEditingText(e.target.value)}
-              onKeyDown={e => {
-                if (e.key === 'Enter') saveEdit(task.id);
-                if (e.key === 'Escape') cancelEditing();
-              }}
-              onBlur={() => saveEdit(task.id)}
-              className="flex-1 px-2 py-1 border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-indigo-500"
-              autoFocus
-            />
-          ) : (
-            <span
-              onClick={() => startEditing(task)}
-              className={`flex-1 cursor-text ${task.isComplete ? 'text-gray-400 line-through' : 'text-gray-700'}`}
-              title="Click to edit"
-            >
-              {task.title}
-            </span>
-          )}
-        </div>
-      </li>
-    );
-  };
 
   return (
     <div className="bg-white rounded-lg shadow-sm border border-gray-200">
@@ -129,7 +69,9 @@ export function TaskList({ list }: { list: TaskList }) {
         </form>
 
         <ul className="space-y-2 mb-6">
-          {incompleteTasks.map(renderTask)}
+          {incompleteTasks.map(t => (
+            <TaskItemRow key={t.id} task={t} onToggle={onToggle} onRename={onRename} />
+          ))}
         </ul>
 
         {completedTasks.length > 0 && (
@@ -152,7 +94,9 @@ export function TaskList({ list }: { list: TaskList }) {
 
             {isExpanded && (
               <ul className="space-y-2">
-                {completedTasks.map(renderTask)}
+                {completedTasks.map(t => (
+                  <TaskItemRow key={t.id} task={t} onToggle={onToggle} onRename={onRename} />
+                ))}
               </ul>
             )}
           </>
