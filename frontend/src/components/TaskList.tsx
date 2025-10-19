@@ -4,7 +4,13 @@ import { api } from '../services/api';
 import { Button } from './Button';
 import { TaskItemRow } from './TaskItemRow';
 
-export function TaskList({ list }: { list: TaskList }) {
+export function TaskList({
+  list,
+  onDeleteList,
+}: {
+  list: TaskList;
+  onDeleteList: (id: number) => void;
+}) {
   const [tasks, setTasks] = useState<TaskItem[]>([]);
   const [newTaskTitle, setNewTaskTitle] = useState('');
   const [isExpanded, setIsExpanded] = useState(true);
@@ -64,7 +70,12 @@ export function TaskList({ list }: { list: TaskList }) {
 
   const saveListTitle = async () => {
     const next = listName.trim();
-    if (!next || next === list.name) {
+
+    if (!next) {
+      return cancelEditList();
+    }
+
+    if (next === list.name) {
       return cancelEditList();
     }
 
@@ -72,11 +83,21 @@ export function TaskList({ list }: { list: TaskList }) {
     setIsEditingList(false);
   };
 
+  // Delete list
+  const deleteThisList = async () => {
+    if (!confirm('Delete this list and all its tasks?')) {
+      return;
+    }
+
+    await api.deleteList(list.id);
+    onDeleteList(list.id);
+  };
+
   const completedTasks = tasks.filter(t => t.isComplete);
   const incompleteTasks = tasks.filter(t => !t.isComplete);
 
   return (
-    <div className="bg-white rounded-lg shadow-sm border border-gray-200">
+    <div className="group bg-white rounded-lg shadow-sm border border-gray-200 relative transition hover:shadow-md flex flex-col">
       <div className="p-4 border-b border-gray-200">
         {isEditingList ? (
           <input
@@ -89,6 +110,7 @@ export function TaskList({ list }: { list: TaskList }) {
               if (e.key === 'Enter') {
                 return saveListTitle();
               }
+
               if (e.key === 'Escape') {
                 return cancelEditList();
               }
@@ -105,7 +127,7 @@ export function TaskList({ list }: { list: TaskList }) {
         )}
       </div>
 
-      <div className="p-4">
+      <div className="p-4 flex-1">
         <form onSubmit={addTask} className="flex gap-2 mb-4">
           <label htmlFor="newTask" className="sr-only">Add a task</label>
           <input
@@ -155,6 +177,26 @@ export function TaskList({ list }: { list: TaskList }) {
             )}
           </>
         )}
+      </div>
+
+      <div className="mt-auto opacity-0 group-hover:opacity-100 transition-opacity border-t border-gray-200 px-3 py-2 flex justify-end gap-2">
+        <button
+          type="button"
+          onClick={deleteThisList}
+          className="inline-flex items-center gap-1 text-sm text-gray-500 hover:text-red-600"
+          title="Delete list"
+        >
+          <svg
+            className="h-4 w-4"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+          >
+            <path strokeLinecap="round" strokeLinejoin="round" d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2m1 0v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6h12z" />
+          </svg>
+          Delete
+        </button>
       </div>
     </div>
   );

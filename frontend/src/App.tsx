@@ -5,47 +5,57 @@ import { TaskList } from './components/TaskList';
 import { Button } from './components/Button';
 
 export function App() {
-    const [lists, setLists] = useState<TaskListType[]>([]);
-    const [newListName, setNewListName] = useState('');
+  const [lists, setLists] = useState<TaskListType[]>([]);
+  const [newListName, setNewListName] = useState('');
 
-    useEffect(() => {
-        api.getLists().then(setLists);
-    }, []);
+  useEffect(() => {
+    api.getLists().then(setLists);
+  }, []);
 
-    const addList = async (e: React.FormEvent) => {
-        e.preventDefault();
-        if (!newListName.trim()) return;
+  const addList = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const name = newListName.trim();
 
-        const list = await api.createList({ name: newListName });
-        setLists([...lists, list]);
-        setNewListName('');
-    };
+    if (!name) {
+      return;
+    }
 
-    return (
-        <div className="min-h-screen bg-gray-50">
-            <div className="container mx-auto px-4 py-8">
-                <div className="max-w-4xl mx-auto">
-                    <h1 className="text-3xl font-bold text-gray-900 mb-8">My Tasks</h1>
-                    <form id="new-list-form" onSubmit={addList} className="flex gap-3 mb-8">
-                        <input
-                            id="new-list-name"
-                            name="listName"
-                            type="text"
-                            value={newListName}
-                            onChange={e => setNewListName(e.target.value)}
-                            placeholder="Add a new list..."
-                            className="flex-1 px-4 py-2 border border-gray-300 rounded-md shadow-sm 
-                                     focus:outline-none focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500"
-                        />
-                        <Button type="submit">Create List</Button>
-                    </form>
-                    <div className="grid gap-6 md:grid-cols-2">
-                        {lists.map(list => (
-                            <TaskList key={list.id} list={list} />
-                        ))}
-                    </div>
-                </div>
-            </div>
+    const created = await api.createList({ name });
+    setLists(prev => [...prev, created]);
+    setNewListName('');
+  };
+
+  const handleDeleteList = (id: number) => {
+    setLists(prev => prev.filter(l => l.id !== id));
+  };
+
+  return (
+    <div className="min-h-screen bg-gray-50">
+      <div className="container mx-auto px-4 py-8">
+        <div className="max-w-4xl mx-auto">
+          <h1 className="text-3xl font-bold text-gray-900 mb-8">My Tasks</h1>
+
+          <form id="new-list-form" onSubmit={addList} className="flex gap-3 mb-8">
+            <input
+              id="new-list-name"
+              name="listName"
+              type="text"
+              value={newListName}
+              onChange={e => setNewListName(e.target.value)}
+              placeholder="Add a new list..."
+              className="flex-1 px-4 py-2 border border-gray-300 rounded-md shadow-sm 
+                         focus:outline-none focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500"
+            />
+            <Button type="submit">Create List</Button>
+          </form>
+
+          <div className="grid gap-6 md:grid-cols-2">
+            {lists.map(list => (
+              <TaskList key={list.id} list={list} onDeleteList={handleDeleteList} />
+            ))}
+          </div>
         </div>
-    );
+      </div>
+    </div>
+  );
 }
