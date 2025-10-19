@@ -25,6 +25,10 @@ export const api = {
         });
     },
 
+    async deleteList(id: number): Promise<void> {
+        await fetch(`${API_BASE}/lists/${id}`, { method: 'DELETE' });
+    },
+
     async getTasks(listId?: number): Promise<TaskItem[]> {
         const url = `${API_BASE}/tasks${listId ? `?listId=${listId}` : ''}`;
         const res = await fetch(url);
