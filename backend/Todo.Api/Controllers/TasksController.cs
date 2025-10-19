@@ -23,6 +23,15 @@ public class TasksController(
     {
         if (listId.HasValue)
         {
+            var listExists = await _context.TaskLists
+                .AsNoTracking()
+                .AnyAsync(l => l.Id == listId.Value);
+
+            if (!listExists)
+            {
+                return NotFound();
+            }
+
             var items = await _context.TaskItems
                 .AsNoTracking()
                 .Where(t => t.TaskListId == listId.Value)
@@ -134,6 +143,7 @@ public class TasksController(
             return NotFound();
         }
 
+        _context.TaskItems.Remove(item);
         await _context.SaveChangesAsync();
 
         return NoContent();

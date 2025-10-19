@@ -12,7 +12,7 @@ public partial class ListsControllerTests
     {
         // Arrange
         var dto = new CreateTaskListDto("New List");
-
+        
         // Act
         var response = await _client.PostAsJsonAsync("/api/lists", dto);
         var result = await response.Content.ReadFromJsonAsync<TaskListDto>();
