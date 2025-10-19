@@ -1,6 +1,5 @@
 namespace Todo.Api.Controllers;
 
-using System;
 using System.Linq;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;

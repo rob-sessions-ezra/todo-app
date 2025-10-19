@@ -1,6 +1,5 @@
 namespace Todo.Api.Controllers;
 
-using System;
 using System.Linq;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -63,6 +62,40 @@ public class ListsController(
 
         var result = new TaskListDto(entity.Id, entity.Name, []);
         return CreatedAtAction(nameof(GetList), new { id = entity.Id }, result);
+    }
+
+    // PATCH: api/lists/5/title
+    [HttpPatch("{id}/title")]
+    public async Task<ActionResult<TaskListDto>> RenameList(int id, [FromBody] RenameTaskListDto dto)
+    {
+        if (dto is null || string.IsNullOrWhiteSpace(dto.Name))
+        {
+            return BadRequest("Name is required.");
+        }
+
+        var list = await _context.TaskLists.FindAsync(id);
+        if (list is null)
+        {
+            return NotFound();
+        }
+
+        var trimmed = dto.Name.Trim();
+        if (string.Equals(list.Name, trimmed, StringComparison.Ordinal))
+        {
+            // No change
+            return Ok(list.ToDto());
+        }
+
+        list.Name = trimmed;
+        await _context.SaveChangesAsync();
+
+        // Return updated list with items
+        var updated = await _context.TaskLists
+            .AsNoTracking()
+            .Include(l => l.TaskItems)
+            .FirstAsync(l => l.Id == id);
+
+        return Ok(updated.ToDto());
     }
 
     // DELETE: api/lists/5
