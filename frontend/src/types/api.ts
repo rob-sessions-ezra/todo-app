@@ -4,6 +4,7 @@ export interface TaskItem {
     isComplete: boolean;
     dueDate: string | null;
     taskListId: number | null;
+    order: number;
 }
 
 export interface TaskList {
@@ -21,4 +22,8 @@ export interface CreateTask {
 
 export interface CreateTaskList {
     name: string;
+}
+
+export interface ReorderTasks {
+    taskIds: number[];
 }

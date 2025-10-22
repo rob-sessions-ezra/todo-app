@@ -6,6 +6,7 @@ public class TaskItem : BaseEntity
     public string Title { get; set; } = string.Empty;
     public bool IsComplete { get; set; }
     public DateTime? DueDate { get; set; }
+    public int Order { get; set; }
 
     // FK to owning list
     public int? TaskListId { get; set; }

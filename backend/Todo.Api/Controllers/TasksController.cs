@@ -35,6 +35,8 @@ public class TasksController(
             var items = await _context.TaskItems
                 .AsNoTracking()
                 .Where(t => t.TaskListId == listId.Value)
+                .OrderBy(t => t.IsComplete)
+                .ThenBy(t => t.Order)
                 .ToListAsync();
 
             return Ok(items.Select(t => t.ToDto()));
@@ -42,8 +44,11 @@ public class TasksController(
 
         var all = await _context.TaskItems
             .AsNoTracking()
+            .OrderBy(t => t.TaskListId)
+            .ThenBy(t => t.IsComplete)
+            .ThenBy(t => t.Order)
             .ToListAsync();
-            
+
         return Ok(all.Select(t => t.ToDto()));
     }
 
@@ -76,12 +81,24 @@ public class TasksController(
             }
         }
 
+        // Compute next order among INCOMPLETE tasks only
+        var nextOrder = 0;
+        if (dto.TaskListId.HasValue)
+        {
+            var max = await _context.TaskItems
+                .Where(t => t.TaskListId == dto.TaskListId && !t.IsComplete)
+                .Select(t => (int?)t.Order)
+                .MaxAsync();
+            nextOrder = (max ?? -1) + 1;
+        }
+
         var entity = new TaskItem
         {
             Title = dto.Title,
             IsComplete = dto.IsComplete,
             DueDate = dto.DueDate,
-            TaskListId = dto.TaskListId
+            TaskListId = dto.TaskListId,
+            Order = nextOrder
         };
 
         _context.TaskItems.Add(entity);

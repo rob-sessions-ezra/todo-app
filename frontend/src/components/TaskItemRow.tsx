@@ -1,14 +1,26 @@
 import { memo, useState } from 'react';
 import type { TaskItem } from '../types/api';
+import type { DraggableProvidedDragHandleProps } from '@hello-pangea/dnd';
 
 type Props = {
   task: TaskItem;
   onToggle: (task: TaskItem) => void;
   onRename: (id: number, title: string) => Promise<void> | void;
   onDelete: (id: number) => void;
+
+  // Reordering
+  canDrag: boolean; // true for incomplete tasks
+  dragHandleProps?: DraggableProvidedDragHandleProps;
 };
 
-function TaskItemRowBase({ task, onToggle, onRename, onDelete }: Props) {
+function TaskItemRowBase({
+  task,
+  onToggle,
+  onRename,
+  onDelete,
+  canDrag,
+  dragHandleProps,
+}: Props) {
   const [isEditing, setIsEditing] = useState(false);
   const [text, setText] = useState(task.title);
 
@@ -26,8 +38,41 @@ function TaskItemRowBase({ task, onToggle, onRename, onDelete }: Props) {
   const checkboxId = `task-${task.id}`;
 
   return (
-    <li className="group/task p-2 hover:bg-gray-50 rounded-md">
+    <div
+      className={[
+        'group/task p-2 rounded-md cursor-default',
+        'transition-all duration-150 ease-in-out',
+        !canDrag ? 'hover:bg-gray-50' : '',
+      ].join(' ')}
+    >
       <div className="flex items-center gap-3 w-full">
+        {/* six-dot drag handle */}
+        {canDrag ? (
+          <button
+            type="button"
+            aria-label="Drag to reorder"
+            title="Drag to reorder"
+            className={[
+              'shrink-0 h-5 w-5 grid grid-cols-2 gap-0.5',
+              'cursor-grab',
+              'text-gray-400 hover:text-gray-500 select-none',
+            ].join(' ')}
+            {...(dragHandleProps ?? {})}            
+          >
+            {/* 2x3 dot grid */}
+            <svg viewBox="0 0 24 24" className="h-5 w-5" fill="currentColor" aria-hidden="true">
+              <circle cx="8" cy="7" r="1.5" />
+              <circle cx="8" cy="12" r="1.5" />
+              <circle cx="8" cy="17" r="1.5" />
+              <circle cx="14" cy="7" r="1.5" />
+              <circle cx="14" cy="12" r="1.5" />
+              <circle cx="14" cy="17" r="1.5" />
+            </svg>
+          </button>
+        ) : (
+          <span className="shrink-0 h-5 w-5" aria-hidden="true" />
+        )}
+
         <input
           id={checkboxId}
           name={checkboxId}
@@ -68,6 +113,7 @@ function TaskItemRowBase({ task, onToggle, onRename, onDelete }: Props) {
           </span>
         )}
 
+        {/* per-row delete, visible only when hovering this row */}
         <button
           type="button"
           aria-label="Delete task"
@@ -91,7 +137,7 @@ function TaskItemRowBase({ task, onToggle, onRename, onDelete }: Props) {
           </svg>
         </button>
       </div>
-    </li>
+    </div>
   );
 }
 

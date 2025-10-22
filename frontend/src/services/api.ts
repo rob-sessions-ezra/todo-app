@@ -1,4 +1,4 @@
-import type { TaskItem, TaskList, CreateTask, CreateTaskList } from '../types/api';
+import type { TaskItem, TaskList, CreateTask, CreateTaskList, ReorderTasks } from '../types/api';
 
 const API_BASE = 'http://localhost:5237/api';
 
@@ -22,6 +22,14 @@ export const api = {
             method: 'PATCH',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ name })
+        });
+    },
+
+    async reorderTasks(listId: number, taskIds: number[]): Promise<void> {
+        await fetch(`${API_BASE}/lists/${listId}/reorder-tasks`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ taskIds } satisfies ReorderTasks)
         });
     },
 
