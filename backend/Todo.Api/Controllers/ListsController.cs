@@ -98,6 +98,47 @@ public class ListsController(
         return Ok(updated.ToDto());
     }
 
+    // PUT: api/lists/5/reorder-tasks
+    [HttpPut("{listId}/reorder-tasks")]
+    public async Task<IActionResult> ReorderTasks(int listId, [FromBody] ReorderTasksDto body)
+    {
+        if (body?.TaskIds is null || body.TaskIds.Length == 0)
+        {
+            return BadRequest("TaskIds are required.");
+        }
+
+        if (!await _context.TaskLists.AnyAsync(l => l.Id == listId))
+        {
+            return NotFound("List not found.");
+        }
+
+        // Load INCOMPLETE tasks for the list (only these are reorderable)
+        var tasks = await _context.TaskItems
+            .Where(t => t.TaskListId == listId && !t.IsComplete)
+            .ToListAsync();
+
+        // Validate permutation
+        var existingIds = tasks.Select(t => t.Id).OrderBy(x => x).ToArray();
+        var suppliedIds = body.TaskIds.Distinct().OrderBy(x => x).ToArray();
+        if (existingIds.Length != body.TaskIds.Length || !existingIds.SequenceEqual(suppliedIds))
+        {
+            return BadRequest("TaskIds must include all the incomplete task ids for this list.");
+        }
+
+        // Apply order
+        var orderById = body.TaskIds
+            .Select((id, index) => new { id, index })
+            .ToDictionary(x => x.id, x => x.index);
+
+        foreach (var t in tasks)
+        {
+            t.Order = orderById[t.Id];
+        }
+
+        await _context.SaveChangesAsync();
+        return NoContent();
+    }
+
     // DELETE: api/lists/5
     [HttpDelete("{id}")]
     public async Task<IActionResult> DeleteList(int id)

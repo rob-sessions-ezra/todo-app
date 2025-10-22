@@ -8,12 +8,13 @@ public static class EntityToDtoMapper
 {
 	// Map a TaskItem entity to TaskItemDto
 	public static TaskItemDto ToDto(this TaskItem item) =>
-        new(
+		new(
 			item.Id,
 			item.Title,
 			item.IsComplete,
 			item.DueDate,
-			item.TaskListId
+			item.TaskListId,
+			item.Order
 		);
 
 	// Map a TaskList entity to TaskListDto (including its tasks)

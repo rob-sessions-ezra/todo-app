@@ -1,8 +1,15 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import type { TaskItem, TaskList } from '../types/api';
 import { api } from '../services/api';
 import { Button } from './Button';
 import { TaskItemRow } from './TaskItemRow';
+
+import {
+  DragDropContext,
+  Droppable,
+  Draggable,
+  type DropResult
+} from '@hello-pangea/dnd';
 
 export function TaskList({
   list,
@@ -26,11 +33,17 @@ export function TaskList({
     setListName(list.name);
   }, [list.name]);
 
+  // Derived partitions
+  const { incompleteTasks, completedTasks } = useMemo(() => {
+    const inc = tasks.filter(t => !t.isComplete).sort((a, b) => a.order - b.order);
+    const com = tasks.filter(t => t.isComplete).sort((a, b) => a.order - b.order);
+    return { incompleteTasks: inc, completedTasks: com };
+  }, [tasks]);
+
   // Add new task
   const addTask = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     const title = newTaskTitle.trim();
-
     if (!title) {
       return;
     }
@@ -50,13 +63,16 @@ export function TaskList({
   // Rename task
   const onRename = async (id: number, title: string) => {
     const existing = tasks.find(t => t.id === id);
-
-    if (!existing || existing.title === title) {
+    if (!existing) {
+      return;
+    }
+    const next = title.trim();
+    if (!next || existing.title === next) {
       return;
     }
 
-    await api.updateTask(id, { ...existing, title });
-    setTasks(prev => prev.map(t => (t.id === id ? { ...t, title } : t)));
+    await api.updateTask(id, { ...existing, title: next });
+    setTasks(prev => prev.map(t => (t.id === id ? { ...t, title: next } : t)));
   };
 
   // Delete task
@@ -70,23 +86,18 @@ export function TaskList({
     setIsEditingList(true);
     setListName(list.name);
   };
-
   const cancelEditList = () => {
     setIsEditingList(false);
     setListName(list.name);
   };
-
   const saveListTitle = async () => {
     const next = listName.trim();
-
     if (!next) {
       return cancelEditList();
     }
-
     if (next === list.name) {
       return cancelEditList();
     }
-
     await api.updateListTitle(list.id, next);
     setIsEditingList(false);
   };
@@ -96,13 +107,52 @@ export function TaskList({
     if (!confirm('Delete this list and all its tasks?')) {
       return;
     }
-
     await api.deleteList(list.id);
     onDeleteList(list.id);
   };
 
-  const completedTasks = tasks.filter(t => t.isComplete);
-  const incompleteTasks = tasks.filter(t => !t.isComplete);
+  // Helpers
+  const arrayMove = <T,>(arr: T[], from: number, to: number) => {
+    const copy = arr.slice();
+    const [m] = copy.splice(from, 1);
+    copy.splice(to, 0, m);
+    return copy;
+  };
+
+  // ---- Reordering of tasks ----
+  const onDragEnd = async (result: DropResult) => {
+    const { destination, source } = result;
+
+    // no destination or index unchanged
+    if (!destination || destination.index === source.index) {
+        return;
+    }
+
+    // Only allow reordering inside the incomplete section
+    const srcDroppable = source.droppableId;
+    const dstDroppable = destination.droppableId;
+    const incompleteDroppableId = `incomplete-${list.id}`;
+    if (srcDroppable !== incompleteDroppableId || dstDroppable !== incompleteDroppableId) {
+        return;
+    }
+
+    const reordered = arrayMove(incompleteTasks, source.index, destination.index);
+
+    // Reindex orders inside partitions (incomplete only)
+    const nextIncomplete = reordered.map((t, i) => ({ ...t, order: i }));
+    const nextCompleted = completedTasks.map((t, i) => ({ ...t, order: i }));
+
+    const byId = new Map<number, TaskItem>([
+      ...nextIncomplete.map(t => [t.id, t] as const),
+      ...nextCompleted.map(t => [t.id, t] as const),
+    ]);
+
+    setTasks(prev => prev.map(t => byId.get(t.id) ?? t));
+
+    // Persist only the incomplete partition order (IDs)
+    await api.reorderTasks(list.id, nextIncomplete.map(t => t.id));
+  };
+  // --------------------------------------------
 
   return (
     <div className="group bg-white rounded-lg shadow-sm border border-gray-200 relative transition hover:shadow-md flex flex-col">
@@ -118,7 +168,6 @@ export function TaskList({
               if (e.key === 'Enter') {
                 return saveListTitle();
               }
-
               if (e.key === 'Escape') {
                 return cancelEditList();
               }
@@ -149,18 +198,46 @@ export function TaskList({
           <Button type="submit" disabled={!newTaskTitle.trim()}>Add</Button>
         </form>
 
-        <ul className="space-y-2 mb-6">
-          {incompleteTasks.map(t => (
-            <TaskItemRow
-              key={t.id}
-              task={t}
-              onToggle={onToggle}
-              onRename={onRename}
-              onDelete={onDeleteTask}
-            />
-          ))}
-        </ul>
+        {/* Incomplete tasks */}
+        <DragDropContext onDragEnd={onDragEnd}>
+          <Droppable droppableId={`incomplete-${list.id}`} type="TASKS">
+            {(dropProvided) => (
+              <ul
+                ref={dropProvided.innerRef}
+                {...dropProvided.droppableProps}
+                className="space-y-2 mb-6"
+              >
+                {incompleteTasks.map((t, index) => (
+                  <Draggable key={t.id} draggableId={String(t.id)} index={index}>
+                    {(dragProvided, dragSnapshot) => (
+                      <li
+                        ref={dragProvided.innerRef}
+                        {...dragProvided.draggableProps}
+                        style={dragProvided.draggableProps.style}
+                        className={[
+                          'rounded-md',
+                          dragSnapshot.isDragging ? 'opacity-70 ring-2 ring-indigo-300' : '',
+                        ].join(' ')}
+                      >
+                        <TaskItemRow
+                          task={t}
+                          canDrag={true}
+                          onToggle={onToggle}
+                          onRename={onRename}
+                          onDelete={onDeleteTask}
+                          dragHandleProps={dragProvided.dragHandleProps ?? undefined}
+                        />
+                      </li>
+                    )}
+                  </Draggable>
+                ))}
+                {dropProvided.placeholder}
+              </ul>
+            )}
+          </Droppable>
+        </DragDropContext>
 
+        {/* Completed tasks */}
         {completedTasks.length > 0 && (
           <>
             <button
@@ -185,13 +262,15 @@ export function TaskList({
             {isExpanded && (
               <ul className="space-y-2">
                 {completedTasks.map(t => (
-                  <TaskItemRow
-                    key={t.id}
-                    task={t}
-                    onToggle={onToggle}
-                    onRename={onRename}
-                    onDelete={onDeleteTask}
-                  />
+                  <li key={t.id} className="rounded-md">
+                    <TaskItemRow
+                      task={t}
+                      canDrag={false}
+                      onToggle={onToggle}
+                      onRename={onRename}
+                      onDelete={onDeleteTask}
+                    />
+                  </li>
                 ))}
               </ul>
             )}
