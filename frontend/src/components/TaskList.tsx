@@ -150,7 +150,11 @@ export function TaskList({
       <div className="p-4 border-b border-gray-200 dark:border-slate-700">
         {isEditingList ? (
           <input
-            className="text-lg font-semibold text-gray-900 bg-white dark:bg-slate-900 px-2 py-1 border border-gray-300 dark:border-slate-600 rounded focus:outline-none focus:ring-1 focus:ring-indigo-500"
+            className="text-lg font-semibold
+                       text-gray-900 dark:text-slate-100
+                       bg-white dark:bg-slate-900
+                       px-2 py-1 border border-gray-300 dark:border-slate-600
+                       rounded focus:outline-none focus:ring-1 focus:ring-indigo-500"
             value={listName}
             onChange={e => setListName(e.target.value)}
             autoFocus
