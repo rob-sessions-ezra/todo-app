@@ -42,7 +42,7 @@ function TaskItemRowBase({
       className={[
         'group/task p-2 rounded-md cursor-default',
         'transition-all duration-150 ease-in-out',
-        !canDrag ? 'hover:bg-gray-50' : '',
+        !canDrag ? 'hover:bg-gray-50 dark:hover:bg-slate-700' : '',
       ].join(' ')}
     >
       <div className="flex items-center gap-3 w-full">
@@ -96,7 +96,12 @@ function TaskItemRowBase({
                 setIsEditing(false);
               }
             }}
-            className="flex-1 px-2 py-1 border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-indigo-500"
+            className="flex-1 px-2 py-1 rounded border
+                       border-gray-300 dark:border-slate-600
+                       bg-white dark:bg-slate-900
+                       text-gray-900 dark:text-slate-100
+                       placeholder:text-gray-400 dark:placeholder:text-slate-400
+                       focus:outline-none focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500"
           />
         ) : (
           <span
