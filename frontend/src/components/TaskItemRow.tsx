@@ -79,7 +79,7 @@ function TaskItemRowBase({
           type="checkbox"
           checked={task.isComplete}
           onChange={() => onToggle(task)}
-          className="h-4 w-4 text-indigo-600 rounded focus:ring-indigo-500 border-gray-300"
+          className="h-4 w-4 text-indigo-600 rounded focus:ring-indigo-500 border-gray-300 dark:border-slate-600"
         />
 
         {isEditing ? (
@@ -105,7 +105,7 @@ function TaskItemRowBase({
               setIsEditing(true);
             }}
             className={`flex-1 cursor-text ${
-              task.isComplete ? 'text-gray-400 line-through' : 'text-gray-700'
+              task.isComplete ? 'text-gray-400 dark:text-slate-400' : 'text-gray-700 dark:text-slate-200'
             }`}
             title="Click to edit"
           >
