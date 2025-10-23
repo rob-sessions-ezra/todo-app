@@ -16,27 +16,32 @@ export function App() {
     queryFn: api.getLists,
   });
 
-  // Create list mutation
+  // Create list (invalidate on success)
   const createList = useMutation({
     mutationFn: api.createList,
-    onSuccess: (created) => {
-      queryClient.setQueryData<TaskListType[]>(['lists'], (prev) => (prev ? [...prev, created] : [created]));
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['lists'] });
     },
   });
 
-  const addList = async (e: React.FormEvent) => {
+  const addList = (e: React.FormEvent) => {
     e.preventDefault();
     const name = newListName.trim();
     if (!name) {
       return;
-    }    
+    }
     setNewListName('');
     createList.mutate({ name });
   };
 
-  // When a list is deleted, update cache
+  // When a list is deleted, update cache and drop its tasks cache
   const handleDeleteList = (id: number) => {
-    queryClient.setQueryData<TaskListType[]>(['lists'], (prev) => prev?.filter(l => l.id !== id) ?? []);
+    queryClient.setQueryData<TaskListType[]>(['lists'], (prev) => {
+      if (!prev) {
+        return prev;
+      }
+      return prev.filter(l => l.id !== id);
+    });
     queryClient.removeQueries({ queryKey: ['tasks', id] });
   };
 
@@ -48,6 +53,7 @@ export function App() {
             <h1 className="text-3xl font-bold text-gray-900 dark:text-slate-100">My Tasks</h1>
             <ThemeToggle />
           </div>
+
           <form id="new-list-form" onSubmit={addList} className="flex gap-3 mb-8">
             <input
               id="new-list-name"
@@ -56,12 +62,14 @@ export function App() {
               value={newListName}
               onChange={e => setNewListName(e.target.value)}
               placeholder="Add a new list..."
-              className="flex-1 px-4 py-2 border border-gray-300 dark:border-slate-600 rounded-md shadow-sm 
+              className="flex-1 px-4 py-2 border border-gray-300 dark:border-slate-600 rounded-md shadow-sm
                          bg-white dark:bg-slate-800 text-gray-900 dark:text-slate-100
                          placeholder:text-gray-400 dark:placeholder:text-slate-400
                          focus:outline-none focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500"
             />
-            <Button type="submit">Create List</Button>
+            <Button type="submit" disabled={!newListName.trim()}>
+              Create List
+            </Button>
           </form>
 
           <div className="grid gap-6 md:grid-cols-2">
