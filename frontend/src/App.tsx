@@ -1,33 +1,48 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import type { TaskList as TaskListType } from './types/api';
 import { api } from './services/api';
 import { TaskList } from './components/TaskList';
 import { Button } from './components/Button';
 import { ThemeToggle } from './components/ThemeToggle';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 
 export function App() {
-  const [lists, setLists] = useState<TaskListType[]>([]);
   const [newListName, setNewListName] = useState('');
+  const queryClient = useQueryClient();
 
-  useEffect(() => {
-    api.getLists().then(setLists);
-  }, []);
+  // Lists query
+  const { data: lists = [] } = useQuery<TaskListType[]>({
+    queryKey: ['lists'],
+    queryFn: api.getLists,
+  });
 
-  const addList = async (e: React.FormEvent) => {
+  // Create list (invalidate on success)
+  const createList = useMutation({
+    mutationFn: api.createList,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['lists'] });
+    },
+  });
+
+  const addList = (e: React.FormEvent) => {
     e.preventDefault();
     const name = newListName.trim();
-
     if (!name) {
       return;
     }
-
-    const created = await api.createList({ name });
-    setLists(prev => [...prev, created]);
     setNewListName('');
+    createList.mutate({ name });
   };
 
+  // When a list is deleted, update cache and drop its tasks cache
   const handleDeleteList = (id: number) => {
-    setLists(prev => prev.filter(l => l.id !== id));
+    queryClient.setQueryData<TaskListType[]>(['lists'], (prev) => {
+      if (!prev) {
+        return prev;
+      }
+      return prev.filter(l => l.id !== id);
+    });
+    queryClient.removeQueries({ queryKey: ['tasks', id] });
   };
 
   return (
@@ -38,6 +53,7 @@ export function App() {
             <h1 className="text-3xl font-bold text-gray-900 dark:text-slate-100">My Tasks</h1>
             <ThemeToggle />
           </div>
+
           <form id="new-list-form" onSubmit={addList} className="flex gap-3 mb-8">
             <input
               id="new-list-name"
@@ -46,12 +62,14 @@ export function App() {
               value={newListName}
               onChange={e => setNewListName(e.target.value)}
               placeholder="Add a new list..."
-              className="flex-1 px-4 py-2 border border-gray-300 dark:border-slate-600 rounded-md shadow-sm 
+              className="flex-1 px-4 py-2 border border-gray-300 dark:border-slate-600 rounded-md shadow-sm
                          bg-white dark:bg-slate-800 text-gray-900 dark:text-slate-100
                          placeholder:text-gray-400 dark:placeholder:text-slate-400
                          focus:outline-none focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500"
             />
-            <Button type="submit">Create List</Button>
+            <Button type="submit" disabled={!newListName.trim()}>
+              Create List
+            </Button>
           </form>
 
           <div className="grid gap-6 md:grid-cols-2">
