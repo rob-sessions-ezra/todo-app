@@ -155,11 +155,11 @@ export function TaskList({
   // --------------------------------------------
 
   return (
-    <div className="group bg-white rounded-lg shadow-sm border border-gray-200 relative transition hover:shadow-md flex flex-col">
-      <div className="p-4 border-b border-gray-200">
+    <div className="group bg-white dark:bg-slate-800 rounded-lg shadow-sm border border-gray-200 dark:border-slate-700 relative transition hover:shadow-md flex flex-col">
+      <div className="p-4 border-b border-gray-200 dark:border-slate-700">
         {isEditingList ? (
           <input
-            className="text-lg font-semibold text-gray-900 bg-white px-2 py-1 border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-indigo-500"
+            className="text-lg font-semibold text-gray-900 bg-white dark:bg-slate-900 px-2 py-1 border border-gray-300 dark:border-slate-600 rounded focus:outline-none focus:ring-1 focus:ring-indigo-500"
             value={listName}
             onChange={e => setListName(e.target.value)}
             autoFocus
@@ -175,7 +175,7 @@ export function TaskList({
           />
         ) : (
           <h2
-            className="text-lg font-semibold text-gray-900 cursor-text"
+            className="text-lg font-semibold text-gray-900 dark:text-slate-100 cursor-text"
             onClick={startEditList}
             title="Click to rename"
           >
@@ -193,7 +193,10 @@ export function TaskList({
             value={newTaskTitle}
             onChange={e => setNewTaskTitle(e.target.value)}
             placeholder="Add a task..."
-            className="flex-1 px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500"
+            className="flex-1 px-3 py-2 border border-gray-300 dark:border-slate-600 rounded-md shadow-sm 
+                                 bg-white dark:bg-slate-900 text-gray-900 dark:text-slate-100
+                                 placeholder:text-gray-400 dark:placeholder:text-slate-400
+                                 focus:outline-none focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500"
           />
           <Button type="submit" disabled={!newTaskTitle.trim()}>Add</Button>
         </form>
@@ -243,7 +246,7 @@ export function TaskList({
             <button
               type="button"
               onClick={() => setIsExpanded(v => !v)}
-              className="flex items-center gap-2 text-sm text-gray-500 mb-2 hover:text-gray-700"
+              className="flex items-center gap-2 text-sm text-gray-500 dark:text-slate-400 mb-2 hover:text-gray-700 dark:hover:text-slate-200"
             >
               <svg
                 className={`h-5 w-5 transition-transform ${isExpanded ? 'rotate-0' : '-rotate-90'}`}
