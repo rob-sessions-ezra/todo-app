@@ -17,89 +17,61 @@ export function TaskList({
   const [isExpanded, setIsExpanded] = useState(true);
   const [isEditingList, setIsEditingList] = useState(false);
   const [listName, setListName] = useState(list.name);
-  const queryClient = useQueryClient();
 
-  // Tasks query (per list)
+  const qc = useQueryClient();
+
+  // Tasks per list
   const { data: tasks = [] } = useQuery<TaskItem[]>({
     queryKey: ['tasks', list.id],
     queryFn: () => api.getTasks(list.id),
   });
 
-  // Derived partitions
+  // Partition + sort
   const { incompleteTasks, completedTasks } = useMemo(() => {
     const inc = tasks.filter(t => !t.isComplete).sort((a, b) => a.order - b.order);
-    const com = tasks.filter(t => t.isComplete).sort((a, b) => a.order - b.order);
+    const com = tasks.filter(t =>  t.isComplete).sort((a, b) => a.order - b.order);
     return { incompleteTasks: inc, completedTasks: com };
   }, [tasks]);
 
-  // Mutations
+  // --- Mutations (invalidate after success) ---
   const createTask = useMutation({
     mutationFn: api.createTask,
-    onSuccess: (created) => {
-      queryClient.setQueryData<TaskItem[]>(['tasks', list.id], (prev) => (prev ? [...prev, created] : [created]));
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['tasks', list.id] });
     },
   });
 
   const updateTask = useMutation({
-    mutationFn: ({ id, payload }: { id: number; payload: Partial<TaskItem> }) =>
-      api.updateTask(id, payload as any),
-    onMutate: async ({ id, payload }) => {
-      await queryClient.cancelQueries({ queryKey: ['tasks', list.id] });
-      const previous = queryClient.getQueryData<TaskItem[]>(['tasks', list.id]);
-      queryClient.setQueryData<TaskItem[]>(['tasks', list.id], (prev) =>
-        prev?.map(t => (t.id === id ? { ...t, ...payload } as TaskItem : t)) ?? prev
-      );
-      return { previous };
-    },
-    onError: (_err, _vars, ctx) => {
-      if (ctx?.previous) {
-        queryClient.setQueryData(['tasks', list.id], ctx.previous);
-      }
+    mutationFn: ({ id, payload }: { id: number; payload: Partial<TaskItem> }) => api.updateTask(id, payload),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['tasks', list.id] });
     },
   });
 
   const deleteTask = useMutation({
     mutationFn: api.deleteTask,
-    onMutate: async (id: number) => {
-      await queryClient.cancelQueries({ queryKey: ['tasks', list.id] });
-      const previous = queryClient.getQueryData<TaskItem[]>(['tasks', list.id]);
-      queryClient.setQueryData<TaskItem[]>(['tasks', list.id], (prev) => prev?.filter(t => t.id !== id) ?? prev);
-      return { previous };
-    },
-    onError: (_err, _vars, ctx) => {
-      if (ctx?.previous) {
-        queryClient.setQueryData(['tasks', list.id], ctx.previous);
-      }
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['tasks', list.id] });
     },
   });
 
   const reorderTasks = useMutation({
-    mutationFn: (orderedIds: number[]) => api.reorderTasks(list.id, orderedIds),
-    onMutate: async (orderedIds) => {
-      await queryClient.cancelQueries({ queryKey: ['tasks', list.id] });
-      const previous = queryClient.getQueryData<TaskItem[]>(['tasks', list.id]);
-      queryClient.setQueryData<TaskItem[]>(['tasks', list.id], (prev) => {
-        if (!prev) {
-          return prev;
-        }
-        const inc = prev.filter(t => !t.isComplete);
-        const com = prev.filter(t => t.isComplete);
-        const byId = new Map(prev.map(t => [t.id, t] as const));
-        const reInc = orderedIds.map((id, i) => ({ ...(byId.get(id)!), order: i }));
-        const reCom = com.map((t, i) => ({ ...t, order: i }));
-        return [...reInc, ...reCom];
-      });
-      return { previous };
-    },
-    onError: (_e, _v, ctx) => {
-      if (ctx?.previous) {
-        queryClient.setQueryData(['tasks', list.id], ctx.previous);
-      }
+    mutationFn: (ids: number[]) => api.reorderTasks(list.id, ids),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['tasks', list.id] });
     },
   });
 
-  // Add new task
-  const addTask = async (e: React.FormEvent<HTMLFormElement>) => {
+  const deleteList = useMutation({
+    mutationFn: api.deleteList,
+    onSuccess: () => {
+      onDeleteList(list.id);
+      qc.invalidateQueries({ queryKey: ['lists'] });
+    },
+  });
+
+  // --- Handlers ---
+  const addTask = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     const title = newTaskTitle.trim();
     if (!title) {
@@ -109,14 +81,12 @@ export function TaskList({
     createTask.mutate({ title, taskListId: list.id });
   };
 
-  // Toggle complete
-  const onToggle = async (task: TaskItem) => {
+  const onToggle = (task: TaskItem) => {
     const next = !task.isComplete;
     updateTask.mutate({ id: task.id, payload: { isComplete: next } });
   };
 
-  // Rename task
-  const onRename = async (id: number, title: string) => {
+  const onRename = (id: number, title: string) => {
     const next = title.trim();
     if (!next) {
       return;
@@ -124,20 +94,20 @@ export function TaskList({
     updateTask.mutate({ id, payload: { title: next } });
   };
 
-  // Delete task
-  const onDeleteTask = async (id: number) => {
+  const onDeleteTask = (id: number) => {
     deleteTask.mutate(id);
   };
 
-  // List title editing (unchanged server call)
   const startEditList = () => {
     setIsEditingList(true);
     setListName(list.name);
   };
+
   const cancelEditList = () => {
     setIsEditingList(false);
     setListName(list.name);
   };
+
   const saveListTitle = async () => {
     const next = listName.trim();
     if (!next || next === list.name) {
@@ -145,34 +115,26 @@ export function TaskList({
     }
     await api.updateListTitle(list.id, next);
     setIsEditingList(false);
-    // Update lists cache
-    queryClient.setQueryData<TaskList[]>(['lists'], (prev) =>
-      prev?.map(l => (l.id === list.id ? { ...l, name: next } : l)) ?? prev
-    );
+    qc.invalidateQueries({ queryKey: ['lists'] });
   };
 
-  // Delete list
-  const deleteThisList = async () => {
-    if (!confirm('Delete this list and all its tasks?')) {
-      return;
-    }
-    await api.deleteList(list.id);
-    onDeleteList(list.id);
-  };
-
-  // Reordering helpers
   const arrayMove = <T,>(arr: T[], from: number, to: number) => {
     const copy = arr.slice();
-    const [m] = copy.splice(from, 1);
-    copy.splice(to, 0, m);
+    const [moved] = copy.splice(from, 1);
+    copy.splice(to, 0, moved);
     return copy;
   };
 
-  const onDragEnd = async (result: DropResult) => {
+  const onDragEnd = (result: DropResult) => {
     const { destination, source } = result;
-    if (!destination || destination.index === source.index) {
+
+    if (!destination) {
       return;
     }
+    if (destination.index === source.index) {
+      return;
+    }
+
     const incompleteDroppableId = `incomplete-${list.id}`;
     if (source.droppableId !== incompleteDroppableId || destination.droppableId !== incompleteDroppableId) {
       return;
@@ -194,8 +156,12 @@ export function TaskList({
             autoFocus
             onBlur={saveListTitle}
             onKeyDown={e => {
-              if (e.key === 'Enter') return saveListTitle();
-              if (e.key === 'Escape') return cancelEditList();
+              if (e.key === 'Enter') {
+                return saveListTitle();
+              }
+              if (e.key === 'Escape') {
+                return cancelEditList();
+              }
             }}
           />
         ) : (
@@ -219,9 +185,9 @@ export function TaskList({
             onChange={e => setNewTaskTitle(e.target.value)}
             placeholder="Add a task..."
             className="flex-1 px-3 py-2 border border-gray-300 dark:border-slate-600 rounded-md shadow-sm 
-                                 bg-white dark:bg-slate-900 text-gray-900 dark:text-slate-100
-                                 placeholder:text-gray-400 dark:placeholder:text-slate-400
-                                 focus:outline-none focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500"
+                       bg-white dark:bg-slate-900 text-gray-900 dark:text-slate-100
+                       placeholder:text-gray-400 dark:placeholder:text-slate-400
+                       focus:outline-none focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500"
           />
           <Button type="submit" disabled={!newTaskTitle.trim()}>Add</Button>
         </form>
@@ -238,7 +204,10 @@ export function TaskList({
                         ref={dragProvided.innerRef}
                         {...dragProvided.draggableProps}
                         style={dragProvided.draggableProps.style}
-                        className={['rounded-md', dragSnapshot.isDragging ? 'opacity-70 ring-2 ring-indigo-300' : ''].join(' ')}
+                        className={[
+                          'rounded-md',
+                          dragSnapshot.isDragging ? 'opacity-70 ring-2 ring-indigo-300' : '',
+                        ].join(' ')}
                       >
                         <TaskItemRow
                           task={t}
@@ -271,6 +240,7 @@ export function TaskList({
               </svg>
               <span>{completedTasks.length} Completed {completedTasks.length === 1 ? 'item' : 'items'}</span>
             </button>
+
             {isExpanded && (
               <ul className="space-y-2">
                 {completedTasks.map(t => (
@@ -290,15 +260,15 @@ export function TaskList({
         )}
       </div>
 
-      <div className="mt-auto opacity-0 group-hover:opacity-100 transition-opacity border-t border-gray-200 px-3 py-2 flex justify-end gap-2">
+      {/* Delete list button */}
+      <div className="mt-auto opacity-0 group-hover:opacity-100 transition-opacity border-t border-gray-200 dark:border-slate-700 px-3 py-2 flex justify-end gap-2">
         <button
           type="button"
-          onClick={async () => {
+          onClick={() => {
             if (!confirm('Delete this list and all its tasks?')) {
               return;
             }
-            await api.deleteList(list.id);
-            onDeleteList(list.id);
+            deleteList.mutate(list.id);
           }}
           className="inline-flex items-center gap-1 text-sm text-gray-500 hover:text-red-600"
           title="Delete list"
