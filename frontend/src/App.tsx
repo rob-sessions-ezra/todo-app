@@ -1,33 +1,43 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import type { TaskList as TaskListType } from './types/api';
 import { api } from './services/api';
 import { TaskList } from './components/TaskList';
 import { Button } from './components/Button';
 import { ThemeToggle } from './components/ThemeToggle';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 
 export function App() {
-  const [lists, setLists] = useState<TaskListType[]>([]);
   const [newListName, setNewListName] = useState('');
+  const queryClient = useQueryClient();
 
-  useEffect(() => {
-    api.getLists().then(setLists);
-  }, []);
+  // Lists query
+  const { data: lists = [] } = useQuery<TaskListType[]>({
+    queryKey: ['lists'],
+    queryFn: api.getLists,
+  });
+
+  // Create list mutation
+  const createList = useMutation({
+    mutationFn: api.createList,
+    onSuccess: (created) => {
+      queryClient.setQueryData<TaskListType[]>(['lists'], (prev) => (prev ? [...prev, created] : [created]));
+    },
+  });
 
   const addList = async (e: React.FormEvent) => {
     e.preventDefault();
     const name = newListName.trim();
-
     if (!name) {
       return;
-    }
-
-    const created = await api.createList({ name });
-    setLists(prev => [...prev, created]);
+    }    
     setNewListName('');
+    createList.mutate({ name });
   };
 
+  // When a list is deleted, update cache
   const handleDeleteList = (id: number) => {
-    setLists(prev => prev.filter(l => l.id !== id));
+    queryClient.setQueryData<TaskListType[]>(['lists'], (prev) => prev?.filter(l => l.id !== id) ?? []);
+    queryClient.removeQueries({ queryKey: ['tasks', id] });
   };
 
   return (

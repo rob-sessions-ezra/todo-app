@@ -119,6 +119,7 @@ public class TasksController(
             return NotFound();
         }
 
+        // If moving to another list, validate target list exists
         if (dto.TaskListId.HasValue)
         {
             var listExists = await _context.TaskLists.AnyAsync(l => l.Id == dto.TaskListId.Value);
@@ -128,10 +129,26 @@ public class TasksController(
             }
         }
 
-        existing.Title = dto.Title;
-        existing.IsComplete = dto.IsComplete;
-        existing.DueDate = dto.DueDate;
-        existing.TaskListId = dto.TaskListId;
+        // Apply only provided fields
+        if (dto.Title is not null)
+        {
+            existing.Title = dto.Title;
+        }
+
+        if (dto.IsComplete.HasValue)
+        {
+            existing.IsComplete = dto.IsComplete.Value;
+        }
+
+        if (dto.DueDate.HasValue)
+        {
+            existing.DueDate = dto.DueDate;
+        }
+
+        if (dto.TaskListId.HasValue)
+        {
+            existing.TaskListId = dto.TaskListId;
+        }
 
         try
         {
