@@ -1,5 +1,3 @@
-namespace Todo.Api.Controllers;
-
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Todo.Api.Data;
@@ -7,6 +5,8 @@ using Todo.Api.Dtos;
 using Todo.Api.Entities;
 using Todo.Api.Middleware;
 using Todo.Api.Services;
+
+namespace Todo.Api.Controllers;
 
 [ApiController]
 [Route("api/auth")]

@@ -1,11 +1,9 @@
-namespace Todo.Api.Services;
-
-using System;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Text;
-using Microsoft.Extensions.Configuration;
 using Microsoft.IdentityModel.Tokens;
+
+namespace Todo.Api.Services;
 
 public interface IJwtTokenService
 {

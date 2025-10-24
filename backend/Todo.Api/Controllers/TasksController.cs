@@ -1,6 +1,3 @@
-namespace Todo.Api.Controllers;
-
-using System.Linq;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Todo.Api.Data;
@@ -8,22 +5,20 @@ using Todo.Api.Dtos;
 using Todo.Api.Entities;
 using Todo.Api.Mappings;
 
+namespace Todo.Api.Controllers;
+
 [ApiController]
 [Route("api/tasks")]
 public class TasksController(
-    TaskContext context,
-    ILogger<TasksController> logger) : ControllerBase
+    TaskContext context) : ControllerBase
 {
-    private readonly TaskContext _context = context;
-    private readonly ILogger<TasksController> _logger = logger;
-
     // GET: api/tasks?listId=5
     [HttpGet]
     public async Task<ActionResult<IEnumerable<TaskItemDto>>> GetTasks([FromQuery] int? listId)
     {
         if (listId.HasValue)
         {
-            var listExists = await _context.TaskLists
+            var listExists = await context.TaskLists
                 .AsNoTracking()
                 .AnyAsync(l => l.Id == listId.Value);
 
@@ -32,7 +27,7 @@ public class TasksController(
                 return NotFound();
             }
 
-            var items = await _context.TaskItems
+            var items = await context.TaskItems
                 .AsNoTracking()
                 .Where(t => t.TaskListId == listId.Value)
                 .OrderBy(t => t.IsComplete)
@@ -42,7 +37,7 @@ public class TasksController(
             return Ok(items.Select(t => t.ToDto()));
         }
 
-        var all = await _context.TaskItems
+        var all = await context.TaskItems
             .AsNoTracking()
             .OrderBy(t => t.TaskListId)
             .ThenBy(t => t.IsComplete)
@@ -56,7 +51,7 @@ public class TasksController(
     [HttpGet("{id}")]
     public async Task<ActionResult<TaskItemDto>> GetTask(int id)
     {
-        var item = await _context.TaskItems
+        var item = await context.TaskItems
             .AsNoTracking()
             .FirstOrDefaultAsync(t => t.Id == id);
 
@@ -74,10 +69,10 @@ public class TasksController(
     {
         if (dto.TaskListId.HasValue)
         {
-        var listExists = await _context.TaskLists.AnyAsync(l => l.Id == dto.TaskListId.Value);
+        var listExists = await context.TaskLists.AnyAsync(l => l.Id == dto.TaskListId.Value);
         if (!listExists)
         {
-            return BadRequest($"TaskList with id {dto.TaskListId.Value} does not exist.");
+            return BadRequest(new { message = $"TaskList with id {dto.TaskListId.Value} does not exist." });
         }
         }
 
@@ -85,7 +80,7 @@ public class TasksController(
         var nextOrder = 0;
         if (dto.TaskListId.HasValue)
         {
-        var max = await _context.TaskItems
+        var max = await context.TaskItems
             .Where(t => t.TaskListId == dto.TaskListId && !t.IsComplete)
             .Select(t => (int?)t.Order)
             .MaxAsync();
@@ -101,8 +96,8 @@ public class TasksController(
             Order = nextOrder
         };
 
-        _context.TaskItems.Add(entity);
-        await _context.SaveChangesAsync();
+        context.TaskItems.Add(entity);
+        await context.SaveChangesAsync();
 
         return CreatedAtAction(nameof(GetTask), new { id = entity.Id }, entity.ToDto());
     }
@@ -111,7 +106,7 @@ public class TasksController(
     [HttpPut("{id}")]
     public async Task<IActionResult> UpdateTask(int id, UpdateTaskDto dto)
     {
-        var existing = await _context.TaskItems
+        var existing = await context.TaskItems
             .FirstOrDefaultAsync(t => t.Id == id);
 
         if (existing == null)
@@ -122,10 +117,10 @@ public class TasksController(
         // If moving to another list, validate target list exists
         if (dto.TaskListId.HasValue)
         {
-            var listExists = await _context.TaskLists.AnyAsync(l => l.Id == dto.TaskListId.Value);
+            var listExists = await context.TaskLists.AnyAsync(l => l.Id == dto.TaskListId.Value);
             if (!listExists)
             {
-                return BadRequest($"TaskList with id {dto.TaskListId.Value} does not exist.");
+                return BadRequest(new { message = $"TaskList with id {dto.TaskListId.Value} does not exist." });
             }
         }
 
@@ -152,11 +147,11 @@ public class TasksController(
 
         try
         {
-            await _context.SaveChangesAsync();
+            await context.SaveChangesAsync();
         }
         catch (DbUpdateConcurrencyException)
         {
-            if (!await _context.TaskItems.AnyAsync(e => e.Id == id))
+            if (!await context.TaskItems.AnyAsync(e => e.Id == id))
             {
                 return NotFound();
             }
@@ -171,14 +166,14 @@ public class TasksController(
     [HttpDelete("{id}")]
     public async Task<IActionResult> DeleteTask(int id)
     {
-        var item = await _context.TaskItems.FindAsync(id);
+        var item = await context.TaskItems.FindAsync(id);
         if (item == null)
         {
             return NotFound();
         }
 
-        _context.TaskItems.Remove(item);
-        await _context.SaveChangesAsync();
+        context.TaskItems.Remove(item);
+        await context.SaveChangesAsync();
 
         return NoContent();
     }

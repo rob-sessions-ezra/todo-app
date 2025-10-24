@@ -1,7 +1,5 @@
 namespace Todo.Api.Entities;
 
-using System.Collections.Generic;
-
 public class TaskList : BaseEntity
 {
     public int Id { get; set; }
