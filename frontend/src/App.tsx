@@ -11,6 +11,17 @@ export function App() {
   const [newListName, setNewListName] = useState('');
   const queryClient = useQueryClient();
 
+  // Toasts
+  const [toasts, setToasts] = useState<{ id: number; text: string }[]>([]);
+  const dismissToast = (id: number) => {
+    setToasts(prev => prev.filter(t => t.id !== id));
+  };
+  const pushToast = (text: string) => {
+    const id = Date.now() + Math.floor(Math.random() * 1000);
+    setToasts(prev => [...prev, { id, text }]);
+    setTimeout(() => dismissToast(id), 3000);
+  };
+
   // Lists query
   const { data: lists = [] } = useQuery<TaskListType[]>({
     queryKey: ['lists'],
@@ -33,6 +44,7 @@ export function App() {
     }
     setNewListName('');
     createList.mutate({ name });
+    pushToast('List created successfully');
   };
 
   // When a list is deleted, update cache and drop its tasks cache
@@ -44,6 +56,7 @@ export function App() {
       return prev.filter(l => l.id !== id);
     });
     queryClient.removeQueries({ queryKey: ['tasks', id] });
+    pushToast('List deleted successfully');
   };
 
   return (
@@ -75,10 +88,34 @@ export function App() {
 
           <div className="grid gap-6 md:grid-cols-2">
             {lists.map(list => (
-              <TaskList key={list.id} list={list} onDeleteList={handleDeleteList} />
+              <TaskList
+                key={list.id}
+                list={list}
+                onDeleteList={handleDeleteList}
+              />
             ))}
           </div>
         </div>
+      </div>
+
+      {/* Toast container */}
+      <div className="fixed bottom-4 left-4 z-50 space-y-2">
+        {toasts.map(t => (
+          <div
+            key={t.id}
+            className="rounded-md bg-gray-900 text-white dark:bg-slate-800 dark:text-slate-100 shadow-lg px-4 py-2 flex items-center gap-3"
+          >
+            <span className="text-sm">{t.text}</span>
+            <button
+              onClick={() => dismissToast(t.id)}
+              className="ml-auto text-xs opacity-70 hover:opacity-100"
+              aria-label="Dismiss"
+              title="Dismiss"
+            >
+              ✕
+            </button>
+          </div>
+        ))}
       </div>
     </div>
   );
