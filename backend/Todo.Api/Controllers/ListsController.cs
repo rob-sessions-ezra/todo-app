@@ -1,6 +1,3 @@
-namespace Todo.Api.Controllers;
-
-using System.Linq;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Todo.Api.Data;
@@ -8,20 +5,18 @@ using Todo.Api.Dtos;
 using Todo.Api.Entities;
 using Todo.Api.Mappings;
 
+namespace Todo.Api.Controllers;
+
 [ApiController]
 [Route("api/lists")]
 public class ListsController(
-    TaskContext context,
-    ILogger<ListsController> logger) : ControllerBase
+    TaskContext context) : ControllerBase
 {
-    private readonly TaskContext _context = context;
-    private readonly ILogger<ListsController> _logger = logger;
-
     // GET: api/lists
     [HttpGet]
     public async Task<ActionResult<IEnumerable<TaskListDto>>> GetLists()
     {
-        var lists = await _context.TaskLists
+        var lists = await context.TaskLists
             .AsNoTracking()
             .Include(l => l.TaskItems)
             .ToListAsync();
@@ -35,7 +30,7 @@ public class ListsController(
     [HttpGet("{id}")]
     public async Task<ActionResult<TaskListDto>> GetList(int id)
     {
-        var list = await _context.TaskLists
+        var list = await context.TaskLists
             .AsNoTracking()
             .Include(l => l.TaskItems)
             .FirstOrDefaultAsync(l => l.Id == id);
@@ -57,8 +52,8 @@ public class ListsController(
             Name = dto.Name
         };
 
-        _context.TaskLists.Add(entity);
-        await _context.SaveChangesAsync();
+        context.TaskLists.Add(entity);
+        await context.SaveChangesAsync();
 
         var result = new TaskListDto(entity.Id, entity.Name, []);
         return CreatedAtAction(nameof(GetList), new { id = entity.Id }, result);
@@ -70,10 +65,10 @@ public class ListsController(
     {
         if (dto is null || string.IsNullOrWhiteSpace(dto.Name))
         {
-            return BadRequest("Name is required.");
+            return BadRequest(new { message = "Name is required." });
         }
 
-        var list = await _context.TaskLists.FindAsync(id);
+        var list = await context.TaskLists.FindAsync(id);
         if (list is null)
         {
             return NotFound();
@@ -87,10 +82,10 @@ public class ListsController(
         }
 
         list.Name = trimmed;
-        await _context.SaveChangesAsync();
+        await context.SaveChangesAsync();
 
         // Return updated list with items
-        var updated = await _context.TaskLists
+        var updated = await context.TaskLists
             .AsNoTracking()
             .Include(l => l.TaskItems)
             .FirstAsync(l => l.Id == id);
@@ -104,16 +99,16 @@ public class ListsController(
     {
         if (body?.TaskIds is null || body.TaskIds.Length == 0)
         {
-            return BadRequest("TaskIds are required.");
+            return BadRequest(new { message = "TaskIds are required." });
         }
 
-        if (!await _context.TaskLists.AnyAsync(l => l.Id == listId))
+        if (!await context.TaskLists.AnyAsync(l => l.Id == listId))
         {
-            return NotFound("List not found.");
+            return NotFound(new { message = "List not found." });
         }
 
         // Load INCOMPLETE tasks for the list (only these are reorderable)
-        var tasks = await _context.TaskItems
+        var tasks = await context.TaskItems
             .Where(t => t.TaskListId == listId && !t.IsComplete)
             .ToListAsync();
 
@@ -122,7 +117,7 @@ public class ListsController(
         var suppliedIds = body.TaskIds.Distinct().OrderBy(x => x).ToArray();
         if (existingIds.Length != body.TaskIds.Length || !existingIds.SequenceEqual(suppliedIds))
         {
-            return BadRequest("TaskIds must include all the incomplete task ids for this list.");
+            return BadRequest(new { message = "TaskIds must include all the incomplete task ids for this list." });
         }
 
         // Apply order
@@ -135,7 +130,7 @@ public class ListsController(
             t.Order = orderById[t.Id];
         }
 
-        await _context.SaveChangesAsync();
+        await context.SaveChangesAsync();
         return NoContent();
     }
 
@@ -143,7 +138,7 @@ public class ListsController(
     [HttpDelete("{id}")]
     public async Task<IActionResult> DeleteList(int id)
     {
-        var list = await _context.TaskLists
+        var list = await context.TaskLists
             .Include(l => l.TaskItems)
             .FirstOrDefaultAsync(l => l.Id == id);
 
@@ -152,8 +147,8 @@ public class ListsController(
             return NotFound();
         }
 
-        _context.TaskLists.Remove(list);
-        await _context.SaveChangesAsync();
+        context.TaskLists.Remove(list);
+        await context.SaveChangesAsync();
 
         return NoContent();
     }

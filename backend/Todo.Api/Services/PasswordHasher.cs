@@ -1,7 +1,7 @@
-namespace Todo.Api.Services;
-
 using System.Security.Cryptography;
 using Microsoft.AspNetCore.Cryptography.KeyDerivation;
+
+namespace Todo.Api.Services;
 
 public interface IPasswordHasher
 {

@@ -1,7 +1,7 @@
-namespace Todo.Api.Data;
-
 using Microsoft.EntityFrameworkCore;
 using Todo.Api.Entities;
+
+namespace Todo.Api.Data;
 
 public class TaskContext(DbContextOptions<TaskContext> options) : DbContext(options)
 {
