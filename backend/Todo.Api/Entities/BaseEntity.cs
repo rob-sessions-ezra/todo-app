@@ -2,6 +2,8 @@ namespace Todo.Api.Entities;
 
 public abstract class BaseEntity
 {
+    public Guid OwnerUserId { get; set; }
+
     public bool IsDeleted { get; set; } = false;
 
     public DateTime CreatedAt { get; set; }

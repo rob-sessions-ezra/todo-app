@@ -4,8 +4,8 @@ using System.Linq;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Todo.Api.Data;
-using Todo.Api.Entities;
 using Todo.Api.Dtos;
+using Todo.Api.Entities;
 using Todo.Api.Mappings;
 
 [ApiController]
@@ -74,21 +74,21 @@ public class TasksController(
     {
         if (dto.TaskListId.HasValue)
         {
-            var listExists = await _context.TaskLists.AnyAsync(l => l.Id == dto.TaskListId.Value);
-            if (!listExists)
-            {
-                return BadRequest($"TaskList with id {dto.TaskListId.Value} does not exist.");
-            }
+        var listExists = await _context.TaskLists.AnyAsync(l => l.Id == dto.TaskListId.Value);
+        if (!listExists)
+        {
+            return BadRequest($"TaskList with id {dto.TaskListId.Value} does not exist.");
+        }
         }
 
         // Compute next order among INCOMPLETE tasks only
         var nextOrder = 0;
         if (dto.TaskListId.HasValue)
         {
-            var max = await _context.TaskItems
-                .Where(t => t.TaskListId == dto.TaskListId && !t.IsComplete)
-                .Select(t => (int?)t.Order)
-                .MaxAsync();
+        var max = await _context.TaskItems
+            .Where(t => t.TaskListId == dto.TaskListId && !t.IsComplete)
+            .Select(t => (int?)t.Order)
+            .MaxAsync();
             nextOrder = (max ?? -1) + 1;
         }
 
