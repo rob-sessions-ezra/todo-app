@@ -28,8 +28,9 @@ export function TaskList({
 
   // Partition + sort
   const { incompleteTasks, completedTasks } = useMemo(() => {
-    const inc = tasks.filter(t => !t.isComplete).sort((a, b) => a.order - b.order);
-    const com = tasks.filter(t =>  t.isComplete).sort((a, b) => a.order - b.order);
+    const safe = Array.isArray(tasks) ? tasks : [];
+    const inc = safe.filter(t => !t.isComplete).sort((a, b) => a.order - b.order);
+    const com = safe.filter(t =>  t.isComplete).sort((a, b) => a.order - b.order);
     return { incompleteTasks: inc, completedTasks: com };
   }, [tasks]);
 
