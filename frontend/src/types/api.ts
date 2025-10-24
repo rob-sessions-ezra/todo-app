@@ -27,3 +27,9 @@ export interface CreateTaskList {
 export interface ReorderTasks {
     taskIds: number[];
 }
+
+export interface AuthResponse {
+    userId: string;
+    email: string;
+    token: string;
+}

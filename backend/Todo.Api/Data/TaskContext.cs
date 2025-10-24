@@ -6,13 +6,17 @@ using Todo.Api.Entities;
 public class TaskContext(DbContextOptions<TaskContext> options) : DbContext(options)
 {
     public DbSet<TaskItem> TaskItems { get; set; } = null!;
-
     public DbSet<TaskList> TaskLists { get; set; } = null!;
+    public DbSet<User> Users { get; set; } = null!;
+
+    // Set by middleware before actions execute; used by global query filters
+    public Guid CurrentUserId { get; set; }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
-        modelBuilder.Entity<TaskItem>().HasQueryFilter(t => !t.IsDeleted);
-        modelBuilder.Entity<TaskList>().HasQueryFilter(l => !l.IsDeleted);
+        // Apply soft-delete and per-user scoping automatically
+        modelBuilder.Entity<TaskItem>().HasQueryFilter(e => !e.IsDeleted && e.OwnerUserId == CurrentUserId);
+        modelBuilder.Entity<TaskList>().HasQueryFilter(e => !e.IsDeleted && e.OwnerUserId == CurrentUserId);
 
         modelBuilder.Entity<TaskList>()
             .HasMany(l => l.TaskItems)
@@ -20,6 +24,8 @@ public class TaskContext(DbContextOptions<TaskContext> options) : DbContext(opti
             .HasForeignKey(t => t.TaskListId)
             .IsRequired()
             .OnDelete(DeleteBehavior.Cascade);
+
+        modelBuilder.Entity<User>().HasIndex(u => u.Email);
     }
 
     public override async Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
@@ -30,6 +36,7 @@ public class TaskContext(DbContextOptions<TaskContext> options) : DbContext(opti
         {
             if (entry.State == EntityState.Added)
             {
+                entry.Entity.OwnerUserId = CurrentUserId;
                 entry.Entity.CreatedAt = now;
                 entry.Entity.UpdatedAt = now;
             }

@@ -3,6 +3,7 @@ import type { TaskList as TaskListType } from './types/api';
 import { api } from './services/api';
 import { TaskList } from './components/TaskList';
 import { Button } from './components/Button';
+import { AuthBar } from './components/AuthBar';
 import { ThemeToggle } from './components/ThemeToggle';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 
@@ -51,7 +52,7 @@ export function App() {
         <div className="max-w-4xl mx-auto">
           <div className="mb-8 flex items-center justify-between">
             <h1 className="text-3xl font-bold text-gray-900 dark:text-slate-100">My Tasks</h1>
-            <ThemeToggle />
+            <AuthBar />
           </div>
 
           <form id="new-list-form" onSubmit={addList} className="flex gap-3 mb-8">
