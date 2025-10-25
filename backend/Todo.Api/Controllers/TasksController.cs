@@ -24,7 +24,7 @@ public class TasksController(
 
             if (!listExists)
             {
-                return NotFound();
+                return NotFound(new { message = "List not found." });
             }
 
             var items = await context.TaskItems
@@ -57,7 +57,7 @@ public class TasksController(
 
         if (item == null)
         {
-            return NotFound();
+            return NotFound(new { message = "Task not found." });
         }
 
         return item.ToDto();
@@ -69,21 +69,21 @@ public class TasksController(
     {
         if (dto.TaskListId.HasValue)
         {
-        var listExists = await context.TaskLists.AnyAsync(l => l.Id == dto.TaskListId.Value);
-        if (!listExists)
-        {
-            return BadRequest(new { message = $"TaskList with id {dto.TaskListId.Value} does not exist." });
-        }
+            var listExists = await context.TaskLists.AnyAsync(l => l.Id == dto.TaskListId.Value);
+            if (!listExists)
+            {
+                return BadRequest(new { message = $"TaskList with id {dto.TaskListId.Value} does not exist." });
+            }
         }
 
         // Compute next order among INCOMPLETE tasks only
         var nextOrder = 0;
         if (dto.TaskListId.HasValue)
         {
-        var max = await context.TaskItems
-            .Where(t => t.TaskListId == dto.TaskListId && !t.IsComplete)
-            .Select(t => (int?)t.Order)
-            .MaxAsync();
+            var max = await context.TaskItems
+                .Where(t => t.TaskListId == dto.TaskListId && !t.IsComplete)
+                .Select(t => (int?)t.Order)
+                .MaxAsync();
             nextOrder = (max ?? -1) + 1;
         }
 
@@ -111,7 +111,7 @@ public class TasksController(
 
         if (existing == null)
         {
-            return NotFound();
+            return NotFound(new { message = "Task not found." });
         }
 
         // If moving to another list, validate target list exists
@@ -153,7 +153,7 @@ public class TasksController(
         {
             if (!await context.TaskItems.AnyAsync(e => e.Id == id))
             {
-                return NotFound();
+                return NotFound(new { message = "Task not found." });
             }
 
             throw;
@@ -169,7 +169,7 @@ public class TasksController(
         var item = await context.TaskItems.FindAsync(id);
         if (item == null)
         {
-            return NotFound();
+            return NotFound(new { message = "Task not found." });
         }
 
         context.TaskItems.Remove(item);

@@ -37,7 +37,7 @@ public class ListsController(
 
         if (list == null)
         {
-            return NotFound();
+            return NotFound(new { message = "List not found." });
         }
 
         return Ok(list.ToDto());
@@ -71,7 +71,7 @@ public class ListsController(
         var list = await context.TaskLists.FindAsync(id);
         if (list is null)
         {
-            return NotFound();
+            return NotFound(new { message = "List not found." });
         }
 
         var trimmed = dto.Name.Trim();
@@ -144,7 +144,7 @@ public class ListsController(
 
         if (list == null)
         {
-            return NotFound();
+            return NotFound(new { message = "List not found." });
         }
 
         context.TaskLists.Remove(list);

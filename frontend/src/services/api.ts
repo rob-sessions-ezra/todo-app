@@ -10,6 +10,9 @@ export const auth = {
     get token() {
         return localStorage.getItem(TOKEN_KEY) ?? '';
     },
+    get email() {
+        return localStorage.getItem(EMAIL_KEY) ?? '';
+    },
     set(token: string, email: string) {
         localStorage.setItem(TOKEN_KEY, token);
         localStorage.setItem(EMAIL_KEY, email);
@@ -17,62 +20,67 @@ export const auth = {
     clear() {
         localStorage.removeItem(TOKEN_KEY);
         localStorage.removeItem(EMAIL_KEY);
-    },
-    get email() {
-        return localStorage.getItem(EMAIL_KEY) ?? '';
-    }
+    }    
 };
 
-function withAuth(headers: HeadersInit = {}): HeadersInit {
-    const t = auth.token;
-    return t ? { 
-        ...headers, 
-        Authorization: `Bearer ${t}`
-    } : headers;
-}
+// Helper to include auth token and handle errors
+async function fetchWithCreds(url: string, init: RequestInit = {}) {
+  const headers = new Headers(init.headers || {});
+  const t = auth.token;
+  if (t) {
+    headers.set('Authorization', `Bearer ${t}`);
+  }
 
-// Include credentials (cookies) on all requests
-function withCreds(init?: RequestInit): RequestInit {
-    const base = init ?? {};
-    const mergedHeaders = withAuth((base.headers ?? {}) as HeadersInit);
-    return {
-        ...base,
-        credentials: 'include',
-        headers: mergedHeaders,
-    };
+  if (init.body && !headers.has('Content-Type')) {
+    headers.set('Content-Type', 'application/json');
+  }
+
+  const res = await fetch(url, { credentials: 'include', ...init, headers });
+
+  if (!res.ok) {
+    // try to surface a useful message
+    let msg = `HTTP ${res.status}`;
+    try {
+      const ct = res.headers.get('content-type') ?? '';
+      if (ct.includes('application/json')) {
+        const j = await res.json();
+        msg = j?.message ?? j?.error ?? msg;
+      } else {
+        msg = (await res.text()) || msg;
+      }
+    } catch { /* ignore */ }
+
+    // Throw on fetch failures - triggers onError in useQuery
+    throw new Error(msg);
+  }
+
+  return res;
 }
 
 export const api = {
+
     // Auth endpoints
     async register(email: string, password: string): Promise<AuthResponse> {
-        const res = await fetch(`${API_BASE}/auth/register`, {
+        const res = await fetchWithCreds(`${API_BASE}/auth/register`, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ email, password })
+            body: JSON.stringify({ email, password }),
         });
         const data = await res.json();
-        if (!res.ok) { 
-            throw new Error(data?.message ?? 'Register failed');
-        }
         auth.set(data.token, data.email);
         return data;
     },
     async login(email: string, password: string): Promise<AuthResponse> {
-        const res = await fetch(`${API_BASE}/auth/login`, {
+        const res = await fetchWithCreds(`${API_BASE}/auth/login`, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ email, password })
+            body: JSON.stringify({ email, password }),
         });
         const data = await res.json();
-        if (!res.ok) {
-            throw new Error(data?.message ?? 'Login failed');
-        }
         auth.set(data.token, data.email);
         return data;
     },
     async logout(): Promise<void> {
         try {
-            await fetch(`${API_BASE}/auth/logout`, withCreds({ method: 'POST' }));
+            await fetchWithCreds(`${API_BASE}/auth/logout`, { method: 'POST' });
         } finally {
             auth.clear();
         }
@@ -80,57 +88,52 @@ export const api = {
 
     // Lists
     async getLists(): Promise<TaskList[]> {
-        const res = await fetch(`${API_BASE}/lists`, withCreds());
+        const res = await fetchWithCreds(`${API_BASE}/lists`);
         return res.json();
     },
     async createList(list: CreateTaskList): Promise<TaskList> {
-        const res = await fetch(`${API_BASE}/lists`, withCreds({
+        const res = await fetchWithCreds(`${API_BASE}/lists`, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(list)
-        }));
+        });
         return res.json();
     },
     async updateListTitle(id: number, name: string): Promise<void> {
-        await fetch(`${API_BASE}/lists/${id}/title`, withCreds({
+        await fetchWithCreds(`${API_BASE}/lists/${id}/title`, {
             method: 'PATCH',
-            headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ name })
-        }));
+        });
     },
     async reorderTasks(listId: number, taskIds: number[]): Promise<void> {
-        await fetch(`${API_BASE}/lists/${listId}/reorder-tasks`, withCreds({
+        await fetchWithCreds(`${API_BASE}/lists/${listId}/reorder-tasks`, {
             method: 'PUT',
-            headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ taskIds } satisfies ReorderTasks)
-        }));
+        });
     },
     async deleteList(id: number): Promise<void> {
-        await fetch(`${API_BASE}/lists/${id}`, withCreds({ method: 'DELETE' }));
+        await fetchWithCreds(`${API_BASE}/lists/${id}`, { method: 'DELETE' });
     },
 
     // Tasks
     async getTasks(listId?: number): Promise<TaskItem[]> {
         const url = `${API_BASE}/tasks${listId ? `?listId=${listId}` : ''}`;
-        const res = await fetch(url, withCreds());
+        const res = await fetchWithCreds(url);
         return res.json();
     },
     async createTask(task: CreateTask): Promise<TaskItem> {
-        const res = await fetch(`${API_BASE}/tasks`, withCreds({
+        const res = await fetchWithCreds(`${API_BASE}/tasks`, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(task)
-        }));
+        });
         return res.json();
     },
     async updateTask(id: number, task: CreateTask): Promise<void> {
-        await fetch(`${API_BASE}/tasks/${id}`, withCreds({
+        await fetchWithCreds(`${API_BASE}/tasks/${id}`, {
             method: 'PUT',
-            headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(task)
-        }));
+        });
     },
     async deleteTask(id: number): Promise<void> {
-        await fetch(`${API_BASE}/tasks/${id}`, withCreds({ method: 'DELETE' }));
+        await fetchWithCreds(`${API_BASE}/tasks/${id}`, { method: 'DELETE' });
     }
 };
