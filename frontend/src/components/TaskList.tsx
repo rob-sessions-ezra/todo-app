@@ -6,12 +6,29 @@ import { TaskItemRow } from './TaskItemRow';
 import { DragDropContext, Droppable, Draggable, type DropResult } from '@hello-pangea/dnd';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 
+function getErrMessage(err: unknown): string {
+  if (err instanceof Error) {
+    return err.message;
+  }
+  if (typeof err === 'string') {
+    return err;
+  }
+  try {
+    return JSON.stringify(err);
+  }
+  catch {
+    return 'Something went wrong';
+  }
+}
+
 export function TaskList({
   list,
   onDeleteList,
+  onError,
 }: {
   list: TaskList;
   onDeleteList: (id: number) => void;
+  onError?: (message: string) => void;
 }) {
   const [newTaskTitle, setNewTaskTitle] = useState('');
   const [isExpanded, setIsExpanded] = useState(true);
@@ -24,6 +41,7 @@ export function TaskList({
   const { data: tasks = [] } = useQuery<TaskItem[]>({
     queryKey: ['tasks', list.id],
     queryFn: () => api.getTasks(list.id),
+    onError: (e) => onError?.(getErrMessage(e)),
   });
 
   // Partition + sort
@@ -40,6 +58,7 @@ export function TaskList({
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['tasks', list.id] });
     },
+    onError: (e) => onError?.(getErrMessage(e)),
   });
 
   const updateTask = useMutation({
@@ -47,6 +66,7 @@ export function TaskList({
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['tasks', list.id] });
     },
+    onError: (e) => onError?.(getErrMessage(e)),
   });
 
   const deleteTask = useMutation({
@@ -54,6 +74,7 @@ export function TaskList({
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['tasks', list.id] });
     },
+    onError: (e) => onError?.(getErrMessage(e)),
   });
 
   const reorderTasks = useMutation({
@@ -61,6 +82,7 @@ export function TaskList({
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['tasks', list.id] });
     },
+    onError: (e) => onError?.(getErrMessage(e)),
   });
 
   const deleteList = useMutation({
@@ -69,6 +91,7 @@ export function TaskList({
       onDeleteList(list.id);
       qc.invalidateQueries({ queryKey: ['lists'] });
     },
+    onError: (e) => onError?.(getErrMessage(e)),
   });
 
   // --- Handlers ---
@@ -114,9 +137,13 @@ export function TaskList({
     if (!next || next === list.name) {
       return cancelEditList();
     }
-    await api.updateListTitle(list.id, next);
-    setIsEditingList(false);
-    qc.invalidateQueries({ queryKey: ['lists'] });
+    try {
+      await api.updateListTitle(list.id, next);
+      setIsEditingList(false);
+      qc.invalidateQueries({ queryKey: ['lists'] });
+    } catch (e) {
+      onError?.(getErrMessage(e));
+    }
   };
 
   const arrayMove = <T,>(arr: T[], from: number, to: number) => {
