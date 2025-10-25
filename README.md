@@ -11,9 +11,9 @@ It's written in ASP.NET Core (.NET 8), Entity Framework (InMemory), and React + 
 
 ### Backend
   ```bash
-    cd backend/Todo.Api
-    dotnet restore
-    dotnet run
+cd backend/Todo.Api
+dotnet restore
+dotnet run
   ```
   - API base: http://localhost:5237/api
   - Database: The backend uses EF InMemory for simplicity. Data resets on restart.
