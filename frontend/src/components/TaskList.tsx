@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { PriorityLevel, TaskItem, TaskListModel } from '../types/api';
 import { api } from '../services/api';
 import { Button } from './Button';
@@ -140,26 +140,22 @@ export function TaskList({
     createTask.mutate({ title, taskListId: list.id });
   };
 
-  const onToggle = (task: TaskItem) => {
+  const onToggle = useCallback((task: TaskItem) => {
     const next = !task.isComplete;
     setComplete.mutate({ id: task.id, isComplete: next });
-  };
+  }, [setComplete]);
 
-  const onToggleFire = (id: number, next: boolean) => {
+  const onToggleFire = useCallback((id: number, next: boolean) => {
     setPriority.mutate({ id, priority: next ? PriorityLevel.Fire : PriorityLevel.Normal });
-  };
+  }, [setPriority]);
 
-  const onRename = (id: number, title: string) => {
-    const next = title.trim();
-    if (!next) {
-      return;
-    }
-    renameTask.mutate({ id, title: next });
-  };
+  const onRename = useCallback((id: number, title: string) => {
+    renameTask.mutate({ id, title: title.trim() });
+  }, [renameTask]);
 
-  const onDeleteTask = (id: number) => {
+  const onDeleteTask = useCallback((id: number) => {
     deleteTask.mutate(id);
-  };
+  }, [deleteTask]);
 
   const startEditList = () => {
     setIsEditingList(true);
