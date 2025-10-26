@@ -10,7 +10,7 @@ type Props = {
   onToggleFire: (id: number, next: boolean) => void;
 
   // Reordering
-  canDrag: boolean; // true for incomplete tasks
+  canDrag: boolean;
   dragHandleProps?: DraggableProvidedDragHandleProps;
 };
 
@@ -50,7 +50,7 @@ function TaskItemRowBase({
     >
       <div className="flex items-center gap-3 w-full">
         {/* six-dot drag handle */}
-        {canDrag ? (
+        {canDrag && (
           <button
             type="button"
             aria-label="Drag to reorder"
@@ -60,7 +60,7 @@ function TaskItemRowBase({
               'cursor-grab',
               'text-gray-400 hover:text-gray-500 select-none',
             ].join(' ')}
-            {...(dragHandleProps ?? {})}            
+            {...(dragHandleProps ?? {})}
           >
             {/* 2x3 dot grid */}
             <svg viewBox="0 0 24 24" className="h-5 w-5" fill="currentColor" aria-hidden="true">
@@ -72,8 +72,6 @@ function TaskItemRowBase({
               <circle cx="14" cy="17" r="1.5" />
             </svg>
           </button>
-        ) : (
-          <span className="shrink-0 h-5 w-5" aria-hidden="true" />
         )}
 
         {/* checkbox */}
@@ -178,5 +176,6 @@ export const TaskItemRow = memo(
     prev.task.id === next.task.id &&
     prev.task.title === next.task.title &&
     prev.task.isComplete === next.task.isComplete &&
-    prev.task.priority === next.task.priority
+    prev.task.priority === next.task.priority &&
+    prev.canDrag === next.canDrag
 );

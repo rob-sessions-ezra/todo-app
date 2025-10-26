@@ -8,8 +8,10 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 
 export function TaskList({
   list,
+  showFireOnly = false,
 }: {
   list: TaskListModel;
+  showFireOnly?: boolean;
 }) {
   const [newTaskTitle, setNewTaskTitle] = useState('');
   const [isExpanded, setIsExpanded] = useState(true);
@@ -59,6 +61,7 @@ export function TaskList({
     },
   });
 
+  // --- Tasks Query ---
   const { data: tasks = [] } = useQuery<TaskItem[]>({
     queryKey: ['tasks', list.id],
     queryFn: () => api.getTasks(list.id),
@@ -180,10 +183,11 @@ export function TaskList({
   // Task Partitioning and Sorting
   const { incompleteTasks, completedTasks } = useMemo(() => {
     const safe = Array.isArray(tasks) ? tasks : [];
-    const inc = safe.filter(t => !t.isComplete).sort((a, b) => a.order - b.order);
-    const com = safe.filter(t =>  t.isComplete).sort((a, b) => a.order - b.order);
+    const fireFilter = (t: TaskItem) => !showFireOnly || t.priority === PriorityLevel.Fire;
+    const inc = safe.filter(t => !t.isComplete && fireFilter(t)).sort((a, b) => a.order - b.order);
+    const com = safe.filter(t =>  t.isComplete && fireFilter(t)).sort((a, b) => a.order - b.order);
     return { incompleteTasks: inc, completedTasks: com };
-  }, [tasks]);
+  }, [tasks, showFireOnly]);
 
   const arrayMove = <T,>(arr: T[], from: number, to: number) => {
     const copy = arr.slice();
@@ -251,21 +255,23 @@ export function TaskList({
       <div className="p-4 flex-1">
 
         {/* Add Task Form */}
-        <form onSubmit={addTask} className="flex gap-2 mb-4">
-          <label htmlFor="newTask" className="sr-only">Add a task</label>
-          <input
-            id="newTask"
-            type="text"
-            value={newTaskTitle}
-            onChange={e => setNewTaskTitle(e.target.value)}
-            placeholder="Add a task..."
-            className="flex-1 px-3 py-2 border border-gray-300 dark:border-slate-600 rounded-md shadow-sm 
-                       bg-white dark:bg-slate-900 text-gray-900 dark:text-slate-100
-                       placeholder:text-gray-400 dark:placeholder:text-slate-400
-                       focus:outline-none focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500"
-          />
-          <Button type="submit" disabled={!newTaskTitle.trim()}>Add</Button>
-        </form>
+        {!showFireOnly && (
+          <form onSubmit={addTask} className="flex gap-2 mb-4">
+            <label htmlFor="newTask" className="sr-only">Add a task</label>
+            <input
+              id="newTask"
+              type="text"
+              value={newTaskTitle}
+              onChange={e => setNewTaskTitle(e.target.value)}
+              placeholder="Add a task..."
+              className="flex-1 px-3 py-2 border border-gray-300 dark:border-slate-600 rounded-md shadow-sm 
+                        bg-white dark:bg-slate-900 text-gray-900 dark:text-slate-100
+                        placeholder:text-gray-400 dark:placeholder:text-slate-400
+                        focus:outline-none focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500"
+            />
+            <Button type="submit" disabled={!newTaskTitle.trim()}>Add</Button>
+          </form>
+        )}
 
         {/* Incomplete tasks */}
         <DragDropContext onDragEnd={onDragEnd}>
@@ -286,7 +292,7 @@ export function TaskList({
                       >
                         <TaskItemRow
                           task={t}
-                          canDrag={true}
+                          canDrag={!showFireOnly}
                           onToggle={onToggle}
                           onRename={onRename}
                           onDelete={onDeleteTask}
