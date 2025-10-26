@@ -1,10 +1,9 @@
 import { useState } from 'react';
-import type { TaskList as TaskListType } from './types/api';
+import type { TaskListModel } from './types/api';
 import { api } from './services/api';
 import { TaskList } from './components/TaskList';
 import { Button } from './components/Button';
 import { AuthBar } from './components/AuthBar';
-import { ThemeToggle } from './components/ThemeToggle';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 
 export function App() {
@@ -25,7 +24,7 @@ export function App() {
     err instanceof Error ? err.message : typeof err === 'string' ? err : 'Something went wrong';
 
   // Lists query
-  const { data: lists = [] } = useQuery<TaskListType[]>({
+  const { data: lists = [] } = useQuery<TaskListModel[]>({
     queryKey: ['lists'],
     queryFn: api.getLists,
     onError: (e) => pushToast(getErrMessage(e), 'error'),
@@ -55,7 +54,7 @@ export function App() {
 
   // When a list is deleted, update cache and drop its tasks cache
   const handleDeleteList = (id: number) => {
-    queryClient.setQueryData<TaskListType[]>(['lists'], (prev) => {
+    queryClient.setQueryData<TaskListModel[]>(['lists'], (prev) => {
       if (!prev) {
         return prev;
       }

@@ -1,13 +1,18 @@
+export enum PriorityLevel {
+    Normal = 'normal',
+    Fire = 'fire'
+}
+
 export interface TaskItem {
     id: number;
     title: string;
     isComplete: boolean;
-    dueDate: string | null;
+    priority: PriorityLevel;
     taskListId: number | null;
     order: number;
 }
 
-export interface TaskList {
+export interface TaskListModel {
     id: number;
     name: string;
     taskItems: TaskItem[];
@@ -15,8 +20,6 @@ export interface TaskList {
 
 export interface CreateTask {
     title: string;
-    isComplete?: boolean;
-    dueDate?: string | null;
     taskListId?: number | null;
 }
 

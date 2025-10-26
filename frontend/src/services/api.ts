@@ -1,4 +1,4 @@
-import type { TaskItem, TaskList, CreateTask, CreateTaskList, ReorderTasks, AuthResponse } from '../types/api';
+import type { TaskItem, TaskListModel, CreateTask, CreateTaskList, ReorderTasks, AuthResponse, PriorityLevel } from '../types/api';
 
 const API_BASE = 'http://localhost:5237/api';
 
@@ -87,11 +87,11 @@ export const api = {
     },
 
     // Lists
-    async getLists(): Promise<TaskList[]> {
+    async getLists(): Promise<TaskListModel[]> {
         const res = await fetchWithCreds(`${API_BASE}/lists`);
         return res.json();
     },
-    async createList(list: CreateTaskList): Promise<TaskList> {
+    async createList(list: CreateTaskList): Promise<TaskListModel> {
         const res = await fetchWithCreds(`${API_BASE}/lists`, {
             method: 'POST',
             body: JSON.stringify(list)
@@ -127,10 +127,22 @@ export const api = {
         });
         return res.json();
     },
-    async updateTask(id: number, task: CreateTask): Promise<void> {
-        await fetchWithCreds(`${API_BASE}/tasks/${id}`, {
-            method: 'PUT',
-            body: JSON.stringify(task)
+    async updateTaskTitle(id: number, title: string): Promise<void> {
+        await fetchWithCreds(`${API_BASE}/tasks/${id}/title`, {
+            method: 'PATCH',
+            body: JSON.stringify({ title })
+        });
+    },
+    async setTaskComplete(id: number, isComplete: boolean): Promise<void> {
+        await fetchWithCreds(`${API_BASE}/tasks/${id}/complete`, {
+            method: 'PATCH',
+            body: JSON.stringify({ isComplete })
+        });
+    },
+    async setTaskPriority(id: number, priority: PriorityLevel): Promise<void> {
+        await fetchWithCreds(`${API_BASE}/tasks/${id}/priority`, {
+            method: 'PATCH',
+            body: JSON.stringify({ priority })
         });
     },
     async deleteTask(id: number): Promise<void> {

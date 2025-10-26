@@ -32,21 +32,31 @@ Content-Type: application/json
 
 {
   "title": "Buy milk",
-  "isComplete": false,
-  "dueDate": "2025-11-01T00:00:00",
   "taskListId": 1
 }
 
-### Tasks: update
-PUT {{baseUrl}}/api/tasks/1
+### Tasks: patch title
+PATCH {{baseUrl}}/api/tasks/1/title
 Content-Type: application/json
 
 {
-  "id": 1,
-  "title": "Buy milk and eggs",
-  "isComplete": false,
-  "dueDate": "2025-11-02T00:00:00",
-  "taskListId": 1
+  "title": "Buy milk and eggs"
+}
+
+### Tasks: patch complete
+PATCH {{baseUrl}}/api/tasks/1/complete
+Content-Type: application/json
+
+{
+  "isComplete": true
+}
+
+### Tasks: patch priority
+PATCH {{baseUrl}}/api/tasks/1/priority
+Content-Type: application/json
+
+{
+  "priority": "Fire"
 }
 
 ### Tasks: delete

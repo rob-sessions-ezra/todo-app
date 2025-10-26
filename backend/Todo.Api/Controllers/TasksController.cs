@@ -67,31 +67,25 @@ public class TasksController(
     [HttpPost]
     public async Task<ActionResult<TaskItemDto>> CreateTask(CreateTaskDto dto)
     {
-        if (dto.TaskListId.HasValue)
+        // Require a valid list
+        var listExists = await context.TaskLists.AnyAsync(l => l.Id == dto.TaskListId);
+        if (!listExists)
         {
-            var listExists = await context.TaskLists.AnyAsync(l => l.Id == dto.TaskListId.Value);
-            if (!listExists)
-            {
-                return BadRequest(new { message = $"TaskList with id {dto.TaskListId.Value} does not exist." });
-            }
+            return BadRequest(new { message = $"TaskList with id {dto.TaskListId} does not exist." });
         }
 
         // Compute next order among INCOMPLETE tasks only
-        var nextOrder = 0;
-        if (dto.TaskListId.HasValue)
-        {
-            var max = await context.TaskItems
-                .Where(t => t.TaskListId == dto.TaskListId && !t.IsComplete)
-                .Select(t => (int?)t.Order)
-                .MaxAsync();
-            nextOrder = (max ?? -1) + 1;
-        }
+        var max = await context.TaskItems
+            .Where(t => t.TaskListId == dto.TaskListId && !t.IsComplete)
+            .Select(t => (int?)t.Order)
+            .MaxAsync();
+        var nextOrder = (max ?? -1) + 1;
 
         var entity = new TaskItem
         {
             Title = dto.Title,
-            IsComplete = dto.IsComplete,
-            DueDate = dto.DueDate,
+            IsComplete = false,
+            Priority = PriorityLevel.Normal,
             TaskListId = dto.TaskListId,
             Order = nextOrder
         };
@@ -102,61 +96,70 @@ public class TasksController(
         return CreatedAtAction(nameof(GetTask), new { id = entity.Id }, entity.ToDto());
     }
 
-    // PUT: api/tasks/5
-    [HttpPut("{id}")]
-    public async Task<IActionResult> UpdateTask(int id, UpdateTaskDto dto)
+    // PATCH: api/tasks/{id}/title
+    [HttpPatch("{id}/title")]
+    public async Task<IActionResult> UpdateTitle(int id, [FromBody] UpdateTaskTitleDto body)
     {
-        var existing = await context.TaskItems
-            .FirstOrDefaultAsync(t => t.Id == id);
+        if (body is null || string.IsNullOrWhiteSpace(body.Title))
+        {
+            return BadRequest(new { message = "Title is required." });
+        }
 
-        if (existing == null)
+        var existing = await context.TaskItems.FirstOrDefaultAsync(t => t.Id == id);
+        if (existing is null)
         {
             return NotFound(new { message = "Task not found." });
         }
 
-        // If moving to another list, validate target list exists
-        if (dto.TaskListId.HasValue)
+        var next = body.Title.Trim();
+        if (!string.Equals(existing.Title, next, StringComparison.Ordinal))
         {
-            var listExists = await context.TaskLists.AnyAsync(l => l.Id == dto.TaskListId.Value);
-            if (!listExists)
-            {
-                return BadRequest(new { message = $"TaskList with id {dto.TaskListId.Value} does not exist." });
-            }
-        }
-
-        // Apply only provided fields
-        if (dto.Title is not null)
-        {
-            existing.Title = dto.Title;
-        }
-
-        if (dto.IsComplete.HasValue)
-        {
-            existing.IsComplete = dto.IsComplete.Value;
-        }
-
-        if (dto.DueDate.HasValue)
-        {
-            existing.DueDate = dto.DueDate;
-        }
-
-        if (dto.TaskListId.HasValue)
-        {
-            existing.TaskListId = dto.TaskListId;
-        }
-
-        try
-        {
+            existing.Title = next;
             await context.SaveChangesAsync();
         }
-        catch (DbUpdateConcurrencyException)
-        {
-            if (!await context.TaskItems.AnyAsync(e => e.Id == id))
-            {
-                return NotFound(new { message = "Task not found." });
-            }
 
-            throw;
+        return NoContent();
+    }
+
+    // PATCH: api/tasks/{id}/complete
+    [HttpPatch("{id}/complete")]
+    public async Task<IActionResult> UpdateCompletion(int id, [FromBody] UpdateTaskCompletionDto body)
+    {
+        var existing = await context.TaskItems.FirstOrDefaultAsync(t => t.Id == id);
+        if (existing is null)
+        {
+            return NotFound(new { message = "Task not found." });
+        }
+
+        var desired = body?.IsComplete ?? false;
+        if (existing.IsComplete != desired)
+        {
+            existing.IsComplete = desired;
+            await context.SaveChangesAsync();
+        }
+
+        return NoContent();
+    }
+
+    // PATCH: api/tasks/{id}/priority
+    [HttpPatch("{id}/priority")]
+    public async Task<IActionResult> UpdatePriority(int id, [FromBody] UpdateTaskPriorityDto body)
+    {
+        if (body is null)
+        {
+            return BadRequest(new { message = "Priority is required." });
+        }
+
+        var existing = await context.TaskItems.FirstOrDefaultAsync(t => t.Id == id);
+        if (existing is null)
+        {
+            return NotFound(new { message = "Task not found." });
+        }
+
+        if (existing.Priority != body.Priority)
+        {
+            existing.Priority = body.Priority;
+            await context.SaveChangesAsync();
         }
 
         return NoContent();

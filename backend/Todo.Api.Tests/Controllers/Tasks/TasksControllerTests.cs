@@ -30,7 +30,7 @@ public partial class TasksControllerTests(ApiWebApplicationFactory factory) : IC
             listId = list.Id;
         }
         
-        var response = await _client.PostAsJsonAsync("/api/tasks", new CreateTaskDto(title, false, null, listId));
+        var response = await _client.PostAsJsonAsync("/api/tasks", new CreateTaskDto(title, listId.Value));
         var dto = await response.Content.ReadFromJsonAsync<TaskItemDto>() ?? throw new InvalidOperationException("Failed to deserialize TaskItemDto from response content.");
         return dto;
     }

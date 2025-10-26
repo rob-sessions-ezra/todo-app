@@ -1,5 +1,5 @@
 import { memo, useState } from 'react';
-import type { TaskItem } from '../types/api';
+import { PriorityLevel, type TaskItem } from '../types/api';
 import type { DraggableProvidedDragHandleProps } from '@hello-pangea/dnd';
 
 type Props = {
@@ -7,6 +7,7 @@ type Props = {
   onToggle: (task: TaskItem) => void;
   onRename: (id: number, title: string) => Promise<void> | void;
   onDelete: (id: number) => void;
+  onToggleFire: (id: number, next: boolean) => void;
 
   // Reordering
   canDrag: boolean; // true for incomplete tasks
@@ -18,6 +19,7 @@ function TaskItemRowBase({
   onToggle,
   onRename,
   onDelete,
+  onToggleFire,
   canDrag,
   dragHandleProps,
 }: Props) {
@@ -36,6 +38,7 @@ function TaskItemRowBase({
   };
 
   const checkboxId = `task-${task.id}`;
+  const isFire = task.priority === PriorityLevel.Fire;
 
   return (
     <div
@@ -73,6 +76,7 @@ function TaskItemRowBase({
           <span className="shrink-0 h-5 w-5" aria-hidden="true" />
         )}
 
+        {/* checkbox */}
         <input
           id={checkboxId}
           name={checkboxId}
@@ -82,6 +86,7 @@ function TaskItemRowBase({
           className="h-4 w-4 text-indigo-600 rounded focus:ring-indigo-500 border-gray-300 dark:border-slate-600"
         />
 
+        {/* title (edit/view) */}
         {isEditing ? (
           <input
             autoFocus
@@ -118,6 +123,26 @@ function TaskItemRowBase({
           </span>
         )}
 
+        {/* fire toggle */}
+        <button
+          type="button"
+          aria-label={isFire ? 'Remove urgent' : 'Mark as urgent'}
+          title={isFire ? 'Remove urgent' : 'Mark as urgent'}
+          onClick={e => {
+            e.stopPropagation();
+            onToggleFire(task.id, !isFire);
+          }}
+          onMouseDown={e => e.stopPropagation()}
+          className={[
+            'p-1 rounded transition-opacity',
+            isFire ? 'opacity-100' : 'opacity-0 group-hover/task:opacity-80',
+            'hover:opacity-100 hover:bg-gray-100 dark:hover:bg-slate-700'
+          ].join(' ')}
+          style={{ lineHeight: 0 }}
+        >
+          <img src="/fire.svg" alt="" className="h-4 w-4" />
+        </button>
+
         {/* per-row delete, visible only when hovering this row */}
         <button
           type="button"
@@ -152,5 +177,6 @@ export const TaskItemRow = memo(
   (prev, next) =>
     prev.task.id === next.task.id &&
     prev.task.title === next.task.title &&
-    prev.task.isComplete === next.task.isComplete
+    prev.task.isComplete === next.task.isComplete &&
+    prev.task.priority === next.task.priority
 );

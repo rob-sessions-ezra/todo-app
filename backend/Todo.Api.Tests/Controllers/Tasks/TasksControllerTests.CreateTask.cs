@@ -12,7 +12,7 @@ public partial class TasksControllerTests
     {
         // Arrange
         var list = await CreateTestList("Test List");
-        var dto = new CreateTaskDto("New Task", false, null, list.Id);
+        var dto = new CreateTaskDto("New Task", list.Id);
 
         // Act
         var response = await _client.PostAsJsonAsync("/api/tasks", dto);
@@ -29,7 +29,7 @@ public partial class TasksControllerTests
     public async Task CreateTask_WithInvalidListId_ReturnsBadRequest()
     {
         // Arrange
-        var dto = new CreateTaskDto("New Task", false, null, 9999);
+        var dto = new CreateTaskDto("New Task", 9999);
 
         // Act
         var response = await _client.PostAsJsonAsync("/api/tasks", dto);
