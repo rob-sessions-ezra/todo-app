@@ -6,29 +6,10 @@ import { TaskItemRow } from './TaskItemRow';
 import { DragDropContext, Droppable, Draggable, type DropResult } from '@hello-pangea/dnd';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 
-function getErrMessage(err: unknown): string {
-  if (err instanceof Error) {
-    return err.message;
-  }
-  if (typeof err === 'string') {
-    return err;
-  }
-  try {
-    return JSON.stringify(err);
-  }
-  catch {
-    return 'Something went wrong';
-  }
-}
-
 export function TaskList({
   list,
-  onDeleteList,
-  onError,
 }: {
   list: TaskListModel;
-  onDeleteList: (id: number) => void;
-  onError?: (message: string) => void;
 }) {
   const [newTaskTitle, setNewTaskTitle] = useState('');
   const [isExpanded, setIsExpanded] = useState(true);
@@ -37,28 +18,65 @@ export function TaskList({
 
   const qc = useQueryClient();
 
-  // Tasks per list
+  // --- Task List Mutations ---
+  const renameList = useMutation({
+    mutationFn: ({ id, name }: { id: number; name: string }) => api.updateListTitle(id, name),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['lists'] });
+    },
+    meta: {
+      errorMessage: 'Failed to rename list',
+    },
+  });
+
+  const deleteList = useMutation({
+    mutationFn: api.deleteList,
+
+    onMutate: async (id: number) => {
+      await qc.cancelQueries({ queryKey: ['lists'] });
+      const prev = qc.getQueryData<TaskListModel[]>(['lists']);
+      qc.setQueryData<TaskListModel[]>(['lists'], old => old?.filter(l => l.id !== id) ?? old);
+
+      await qc.cancelQueries({ queryKey: ['tasks', id], exact: true });
+      qc.removeQueries({ queryKey: ['tasks', id], exact: true });
+
+      return { prev };
+    },
+
+    onError: (_err, _id, ctx) => {
+      if (ctx?.prev) {
+        qc.setQueryData(['lists'], ctx.prev);
+      }
+    },
+
+    onSettled: () => {
+      qc.invalidateQueries({ queryKey: ['lists'] });
+    },
+
+    meta: {
+      successMessage: 'List deleted successfully',
+      errorMessage: 'Failed to delete list',
+    },
+  });
+
   const { data: tasks = [] } = useQuery<TaskItem[]>({
     queryKey: ['tasks', list.id],
     queryFn: () => api.getTasks(list.id),
-    onError: (e) => onError?.(getErrMessage(e)),
+    enabled: !deleteList.isPending,
+    meta: {
+      errorMessage: 'Failed to load tasks'
+    },
   });
 
-  // Partition + sort
-  const { incompleteTasks, completedTasks } = useMemo(() => {
-    const safe = Array.isArray(tasks) ? tasks : [];
-    const inc = safe.filter(t => !t.isComplete).sort((a, b) => a.order - b.order);
-    const com = safe.filter(t =>  t.isComplete).sort((a, b) => a.order - b.order);
-    return { incompleteTasks: inc, completedTasks: com };
-  }, [tasks]);
-
-  // --- Mutations (invalidate after success) ---
+  // --- Task Mutations ---
   const createTask = useMutation({
     mutationFn: api.createTask,
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['tasks', list.id] });
     },
-    onError: (e) => onError?.(getErrMessage(e)),
+    meta: {
+      errorMessage: 'Failed to create task',
+    },
   });
 
   const setComplete = useMutation({
@@ -66,15 +84,19 @@ export function TaskList({
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['tasks', list.id] });
     },
-    onError: (e) => onError?.(getErrMessage(e)),
+    meta: {
+      errorMessage: 'Failed to mark task complete',
+    },
   });
 
-  const setTitle = useMutation({
+  const renameTask = useMutation({
     mutationFn: ({ id, title }: { id: number; title: string }) => api.updateTaskTitle(id, title),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['tasks', list.id] });
     },
-    onError: (e) => onError?.(getErrMessage(e)),
+    meta: {
+      errorMessage: 'Failed to update task title',
+    },
   });
 
   const setPriority = useMutation({
@@ -82,7 +104,9 @@ export function TaskList({
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['tasks', list.id] });
     },
-    onError: (e) => onError?.(getErrMessage(e)),
+    meta: {
+      errorMessage: 'Failed to update task priority',
+    },
   });
 
   const deleteTask = useMutation({
@@ -90,7 +114,9 @@ export function TaskList({
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['tasks', list.id] });
     },
-    onError: (e) => onError?.(getErrMessage(e)),
+    meta: {
+      errorMessage: 'Failed to delete task',
+    },
   });
 
   const reorderTasks = useMutation({
@@ -98,16 +124,9 @@ export function TaskList({
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['tasks', list.id] });
     },
-    onError: (e) => onError?.(getErrMessage(e)),
-  });
-
-  const deleteList = useMutation({
-    mutationFn: api.deleteList,
-    onSuccess: () => {
-      onDeleteList(list.id);
-      qc.invalidateQueries({ queryKey: ['lists'] });
+    meta: {
+      errorMessage: 'Failed to reorder tasks',
     },
-    onError: (e) => onError?.(getErrMessage(e)),
   });
 
   // --- Handlers ---
@@ -135,7 +154,7 @@ export function TaskList({
     if (!next) {
       return;
     }
-    setTitle.mutate({ id, title: next });
+    renameTask.mutate({ id, title: next });
   };
 
   const onDeleteTask = (id: number) => {
@@ -157,14 +176,18 @@ export function TaskList({
     if (!next || next === list.name) {
       return cancelEditList();
     }
-    try {
-      await api.updateListTitle(list.id, next);
-      setIsEditingList(false);
-      qc.invalidateQueries({ queryKey: ['lists'] });
-    } catch (e) {
-      onError?.(getErrMessage(e));
-    }
+
+    renameList.mutate({ id: list.id, name: next });
+    setIsEditingList(false);
   };
+
+  // Task Partitioning and Sorting
+  const { incompleteTasks, completedTasks } = useMemo(() => {
+    const safe = Array.isArray(tasks) ? tasks : [];
+    const inc = safe.filter(t => !t.isComplete).sort((a, b) => a.order - b.order);
+    const com = safe.filter(t =>  t.isComplete).sort((a, b) => a.order - b.order);
+    return { incompleteTasks: inc, completedTasks: com };
+  }, [tasks]);
 
   const arrayMove = <T,>(arr: T[], from: number, to: number) => {
     const copy = arr.slice();
@@ -195,6 +218,8 @@ export function TaskList({
 
   return (
     <div className="group bg-white dark:bg-slate-800 rounded-lg shadow-sm border border-gray-200 dark:border-slate-700 relative transition hover:shadow-md flex flex-col">
+      
+      {/* Task List Title */}
       <div className="p-4 border-b border-gray-200 dark:border-slate-700">
         {isEditingList ? (
           <input
@@ -228,6 +253,8 @@ export function TaskList({
       </div>
 
       <div className="p-4 flex-1">
+
+        {/* Add Task Form */}
         <form onSubmit={addTask} className="flex gap-2 mb-4">
           <label htmlFor="newTask" className="sr-only">Add a task</label>
           <input
@@ -280,7 +307,7 @@ export function TaskList({
           </Droppable>
         </DragDropContext>
 
-        {/* Completed tasks */}
+        {/* Completed tasks section */}
         {completedTasks.length > 0 && (
           <>
             <button
@@ -324,6 +351,7 @@ export function TaskList({
             }
             deleteList.mutate(list.id);
           }}
+          disabled={deleteList.isPending}
           className="inline-flex items-center gap-1 text-sm text-gray-500 hover:text-red-600"
           title="Delete list"
         >

@@ -4,30 +4,18 @@ import { api } from './services/api';
 import { TaskList } from './components/TaskList';
 import { Button } from './components/Button';
 import { AuthBar } from './components/AuthBar';
+import { Toasts } from './components/Toasts';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 
 export function App() {
   const [newListName, setNewListName] = useState('');
   const queryClient = useQueryClient();
 
-  // Toasts
-  const [toasts, setToasts] = useState<{ id: number; text: string; type?: 'success' | 'error' | 'info' }[]>([]);
-  const dismissToast = (id: number) => {
-    setToasts(prev => prev.filter(t => t.id !== id));
-  };
-  const pushToast = (text: string, type: 'success' | 'error' | 'info' = 'info') => {
-    const id = Date.now() + Math.floor(Math.random() * 1000);
-    setToasts(prev => [...prev, { id, text, type }]);
-    setTimeout(() => dismissToast(id), 3000);
-  };
-  const getErrMessage = (err: unknown) =>
-    err instanceof Error ? err.message : typeof err === 'string' ? err : 'Something went wrong';
-
   // Lists query
   const { data: lists = [] } = useQuery<TaskListModel[]>({
     queryKey: ['lists'],
     queryFn: api.getLists,
-    onError: (e) => pushToast(getErrMessage(e), 'error'),
+    meta: { errorMessage: 'Failed to load lists' },
   });
 
   // Create list (invalidate on success)
@@ -36,10 +24,10 @@ export function App() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['lists'] });
       setNewListName('');
-      pushToast('List created successfully', 'success');
     },
-    onError: (e) => {
-      pushToast(getErrMessage(e), 'error');
+    meta: {
+      successMessage: 'List created successfully',
+      errorMessage: 'Failed to create list',
     },
   });
 
@@ -50,18 +38,6 @@ export function App() {
       return;
     }
     createList.mutate({ name });
-  };
-
-  // When a list is deleted, update cache and drop its tasks cache
-  const handleDeleteList = (id: number) => {
-    queryClient.setQueryData<TaskListModel[]>(['lists'], (prev) => {
-      if (!prev) {
-        return prev;
-      }
-      return prev.filter(l => l.id !== id);
-    });
-    queryClient.removeQueries({ queryKey: ['tasks', id] });
-    pushToast('List deleted successfully', 'success');
   };
 
   return (
@@ -100,8 +76,6 @@ export function App() {
               <TaskList
                 key={list.id}
                 list={list}
-                onDeleteList={handleDeleteList}
-                onError={(msg) => pushToast(msg, 'error')}
               />
             ))}
           </div>
@@ -109,48 +83,7 @@ export function App() {
       </div>
 
       {/* Toast container */}
-      <div className="fixed bottom-4 left-4 z-50 space-y-3">
-        {toasts.map(t => (
-          <div
-            key={t.id}
-            role="alert"
-            className={[
-              'rounded-lg px-5 py-3 flex items-start gap-3 border shadow-xl backdrop-blur-sm',
-              t.type === 'error'
-                ? 'bg-red-600/95 text-white border-red-400'
-              : t.type === 'success'
-                ? 'bg-emerald-600/95 text-white border-emerald-400'
-                : 'bg-gray-900/95 text-white dark:bg-slate-800/95 dark:text-slate-100 border-gray-700',
-            ].join(' ')}
-          >
-            <span aria-hidden className="mt-0.5">
-              {t.type === 'error' ? (
-                <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v4m0 4h.01M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
-                </svg>
-              ) : t.type === 'success' ? (
-                <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-                </svg>
-              ) : (
-                <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <circle cx="12" cy="12" r="9" />
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4m0 4h.01" />
-                </svg>
-              )}
-            </span>
-            <span className="text-sm leading-5">{t.text}</span>
-            <button
-              onClick={() => dismissToast(t.id)}
-              className="ml-auto text-xs opacity-80 hover:opacity-100"
-              aria-label="Dismiss"
-              title="Dismiss"
-            >
-              ✕
-            </button>
-          </div>
-        ))}
-      </div>
+      <Toasts />
     </div>
   );
 }
