@@ -1,6 +1,6 @@
-# Todo App
+# Fire App
 
-Welcome! This is a full-stack implementation of the classic "to-do" task management app.
+Welcome to the Fire App! This is a full-stack implementation of the classic "to-do" task management app.  
 It's written in ASP.NET Core (.NET 8), Entity Framework (InMemory), and React + Vite + React Query.  See the setup directions below if you'd like to try it out.
 
 ## Setup
