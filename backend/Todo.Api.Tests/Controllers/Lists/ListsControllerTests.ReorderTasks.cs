@@ -82,9 +82,8 @@ public partial class ListsControllerTests
         var t3 = await CreateTestTask(list.Id, "C");
 
         // Mark one as complete
-        var completeDto = new UpdateTaskDto(t2.Title, true, t2.DueDate, t2.TaskListId);
-        var putComplete = await _client.PutAsJsonAsync($"/api/tasks/{t2.Id}", completeDto);
-        Assert.Equal(HttpStatusCode.NoContent, putComplete.StatusCode);
+        var complResp = await _client.PatchAsJsonAsync($"/api/tasks/{t2.Id}/complete", new { isComplete = true });
+        Assert.Equal(HttpStatusCode.NoContent, complResp.StatusCode);
 
         // Act: reorder only incomplete tasks [C, A]
         var resp = await _client.PutAsJsonAsync($"/api/lists/{list.Id}/reorder-tasks", new ReorderTasksDto([t3.Id, t1.Id]));

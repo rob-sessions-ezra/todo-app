@@ -1,4 +1,5 @@
 using System.IdentityModel.Tokens.Jwt;
+using System.Text.Json.Serialization;
 using System.Text;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
@@ -6,13 +7,20 @@ using Microsoft.IdentityModel.Tokens;
 using Todo.Api.Data;
 using Todo.Api.Middleware;
 using Todo.Api.Services;
+using System.Text.Json;
 
 var builder = WebApplication.CreateBuilder(args);
 
 // Register InMemory EF Core DB
 builder.Services.AddDbContext<TaskContext>(options => options.UseInMemoryDatabase("TodoInMemoryDb"));
 
-builder.Services.AddControllers();
+builder.Services.AddControllers()
+    .AddJsonOptions(o =>
+    {
+        // Send string representation of enums over the wire
+        o.JsonSerializerOptions.PropertyNameCaseInsensitive = true;
+        o.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter(JsonNamingPolicy.CamelCase, allowIntegerValues: false));
+    });
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 

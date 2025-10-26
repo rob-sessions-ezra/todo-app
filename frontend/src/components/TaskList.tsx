@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import type { TaskItem, TaskList } from '../types/api';
+import { PriorityLevel, TaskItem, TaskListModel } from '../types/api';
 import { api } from '../services/api';
 import { Button } from './Button';
 import { TaskItemRow } from './TaskItemRow';
@@ -26,7 +26,7 @@ export function TaskList({
   onDeleteList,
   onError,
 }: {
-  list: TaskList;
+  list: TaskListModel;
   onDeleteList: (id: number) => void;
   onError?: (message: string) => void;
 }) {
@@ -61,8 +61,24 @@ export function TaskList({
     onError: (e) => onError?.(getErrMessage(e)),
   });
 
-  const updateTask = useMutation({
-    mutationFn: ({ id, payload }: { id: number; payload: Partial<TaskItem> }) => api.updateTask(id, payload),
+  const setComplete = useMutation({
+    mutationFn: ({ id, isComplete }: { id: number; isComplete: boolean }) => api.setTaskComplete(id, isComplete),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['tasks', list.id] });
+    },
+    onError: (e) => onError?.(getErrMessage(e)),
+  });
+
+  const setTitle = useMutation({
+    mutationFn: ({ id, title }: { id: number; title: string }) => api.updateTaskTitle(id, title),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['tasks', list.id] });
+    },
+    onError: (e) => onError?.(getErrMessage(e)),
+  });
+
+  const setPriority = useMutation({
+    mutationFn: ({ id, priority }: { id: number; priority: PriorityLevel }) => api.setTaskPriority(id, priority),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['tasks', list.id] });
     },
@@ -107,7 +123,11 @@ export function TaskList({
 
   const onToggle = (task: TaskItem) => {
     const next = !task.isComplete;
-    updateTask.mutate({ id: task.id, payload: { isComplete: next } });
+    setComplete.mutate({ id: task.id, isComplete: next });
+  };
+
+  const onToggleFire = (id: number, next: boolean) => {
+    setPriority.mutate({ id, priority: next ? PriorityLevel.Fire : PriorityLevel.Normal });
   };
 
   const onRename = (id: number, title: string) => {
@@ -115,7 +135,7 @@ export function TaskList({
     if (!next) {
       return;
     }
-    updateTask.mutate({ id, payload: { title: next } });
+    setTitle.mutate({ id, title: next });
   };
 
   const onDeleteTask = (id: number) => {
@@ -247,6 +267,7 @@ export function TaskList({
                           onToggle={onToggle}
                           onRename={onRename}
                           onDelete={onDeleteTask}
+                          onToggleFire={onToggleFire}
                           dragHandleProps={dragProvided.dragHandleProps ?? undefined}
                         />
                       </li>
@@ -283,6 +304,7 @@ export function TaskList({
                       onToggle={onToggle}
                       onRename={onRename}
                       onDelete={onDeleteTask}
+                      onToggleFire={onToggleFire}
                     />
                   </li>
                 ))}

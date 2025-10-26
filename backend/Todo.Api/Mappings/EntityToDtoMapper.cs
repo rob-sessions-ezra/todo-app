@@ -1,8 +1,7 @@
-namespace Todo.Api.Mappings;
-
-using System.Linq;
 using Todo.Api.Entities;
 using Todo.Api.Dtos;
+
+namespace Todo.Api.Mappings;
 
 public static class EntityToDtoMapper
 {
@@ -12,9 +11,9 @@ public static class EntityToDtoMapper
 			item.Id,
 			item.Title,
 			item.IsComplete,
-			item.DueDate,
 			item.TaskListId,
-			item.Order
+			item.Order,
+			item.Priority
 		);
 
 	// Map a TaskList entity to TaskListDto (including its tasks)
