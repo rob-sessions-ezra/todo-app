@@ -106,6 +106,7 @@ export function TaskList({
     mutationFn: ({ id, priority }: { id: number; priority: PriorityLevel }) => api.setTaskPriority(id, priority),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['tasks', list.id] });
+      qc.invalidateQueries({ queryKey: ['lists'] });
     },
     meta: {
       errorMessage: 'Failed to update task priority',
