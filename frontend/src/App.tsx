@@ -5,6 +5,7 @@ import { api } from './services/api';
 import { TaskList } from './components/TaskList';
 import { Button } from './components/Button';
 import { AuthBar } from './components/AuthBar';
+import { ThemeToggle } from './components/ThemeToggle';
 import { Toasts } from './components/Toasts';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 
@@ -100,6 +101,7 @@ export function App() {
                   )}
                 </h1>
                 <AuthBar />
+                <ThemeToggle />
               </div>
 
               {/* Create List Form */}

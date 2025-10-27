@@ -279,7 +279,12 @@ export function TaskList({
             {(dropProvided) => (
               <ul ref={dropProvided.innerRef} {...dropProvided.droppableProps} className="space-y-2 mb-6">
                 {incompleteTasks.map((t, index) => (
-                  <Draggable key={t.id} draggableId={String(t.id)} index={index}>
+                  <Draggable 
+                    key={t.id}
+                    draggableId={String(t.id)}
+                    index={index}
+                    isDragDisabled={showFireOnly}
+                  >
                     {(dragProvided, dragSnapshot) => (
                       <li
                         ref={dragProvided.innerRef}
@@ -297,7 +302,7 @@ export function TaskList({
                           onRename={onRename}
                           onDelete={onDeleteTask}
                           onToggleFire={onToggleFire}
-                          dragHandleProps={dragProvided.dragHandleProps ?? undefined}
+                          dragHandleProps={!showFireOnly ? dragProvided.dragHandleProps : undefined}
                         />
                       </li>
                     )}
