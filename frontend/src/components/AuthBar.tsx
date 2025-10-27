@@ -18,7 +18,6 @@ export function AuthBar() {
         >
           Logout
         </button>
-        <ThemeToggle />
       </div>
     );
   }
@@ -67,8 +66,7 @@ export function AuthBar() {
         className="text-xs text-gray-500 hover:text-gray-700 dark:text-slate-400 dark:hover:text-slate-200"
       >
         {mode === 'login' ? 'Need an account?' : 'Have an account?'}
-      </button>
-      <ThemeToggle />
+      </button>      
     </form>
   );
 }
